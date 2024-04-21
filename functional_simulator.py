@@ -190,6 +190,7 @@ class Core():
         return program
         
     def run(self):
+        print("")
         program_counter = 0
         
         program = self.read_code_file()
@@ -197,9 +198,10 @@ class Core():
         while(True):
             # --- ISSUE Stage ---
             current_instruction = program[program_counter]
+            current_instruction_print = current_instruction.copy()
 
-            print("Program Counter     : ", program_counter)
-            print("Current Instruction : ", current_instruction)
+            # print("Program Counter     : ", program_counter)
+            # print("Current Instruction : ", current_instruction)
             
             # --- DECODE + EXECUTE + WRITEBACK Stage ---
             instruction_word = current_instruction[0]
@@ -207,7 +209,8 @@ class Core():
 
             if instruction_word == "HALT":
                 # --- EXECUTE : HALT --- 
-                print("Stopping the program execution!")
+                print(" ".join(current_instruction_print))
+                # print("Stopping the program execution!")
                 break
             
             # ----- VECTOR ARITHMETIC OPERATIONS
@@ -683,6 +686,7 @@ class Core():
             
             # ----- MEMORY ACCESS OPERATIONS
             elif instruction_word == "LV":
+                addresses = []
                 ### --- DECODE : LV ---
                 destination_reg_idx, operand1_reg_idx = self.get_operands(current_instruction)
                 ### --- EXECUTE : LV ---
@@ -694,13 +698,16 @@ class Core():
                 for i in range(self.SRs["VL"].Read(0)[0]):
                     if self.VDMEM.Read(memory_address + i) != None:
                         result[i] = self.VDMEM.Read(memory_address + i)
+                        addresses.append(str(memory_address + i))
                     else:
                         result[i] = 0
                         print("WARNING: Reading from Invalid Memory Address, debug code!")
                 write_result = self.RFs["VRF"].Write(destination_reg_idx, result)
                 if write_result == None:
                     break
+                current_instruction_print[-1] = str("(" + ", ".join(addresses) + ")")
             elif instruction_word == "SV":
+                addresses = []
                 ### --- DECODE : SV ---
                 destination_reg_idx, operand1_reg_idx = self.get_operands(current_instruction)
                 ### --- EXECUTE : SV ---
@@ -713,9 +720,12 @@ class Core():
                     break
                 for i in range(self.SRs["VL"].Read(0)[0]):
                     write_result = self.VDMEM.Write(memory_address + i, vector1[i])
+                    addresses.append(str(memory_address + i))
                     if write_result == None:
                         print("WARNING: Trying to write on an Invalid Memory Address, debug code!")
+                current_instruction_print[-1] = str("(" + ", ".join(addresses) + ")")
             elif instruction_word == "LVWS":
+                addresses = []
                 ### --- DECODE : LVWS ---
                 destination_reg_idx, operand1_reg_idx, operand2_reg_idx = self.get_operands(current_instruction)
                 ### --- EXECUTE : LVWS ---
@@ -731,13 +741,17 @@ class Core():
                 for i in range(self.SRs["VL"].Read(0)[0]):
                     if self.VDMEM.Read(memory_address + (i * stride)) != None:
                         result[i] = self.VDMEM.Read(memory_address + (i * stride))
+                        addresses.append(str(memory_address + (i * stride)))
                     else:
                         result[i] = 0
                         print("WARNING: Reading from Invalid Memory Address, debug code!")
                 write_result = self.RFs["VRF"].Write(destination_reg_idx, result)
                 if write_result == None:
                     break
+                current_instruction_print[-2] = str("(" + ", ".join(addresses) + ")")
+                del current_instruction_print[-1]
             elif instruction_word == "SVWS":
+                addresses = []
                 ### --- DECODE : SVWS ---
                 destination_reg_idx, operand1_reg_idx, operand2_reg_idx = self.get_operands(current_instruction)
                 ### --- EXECUTE : SVWS ---
@@ -754,10 +768,14 @@ class Core():
                     break
                 for i in range(self.SRs["VL"].Read(0)[0]):
                     write_result = self.VDMEM.Write(memory_address + (i * stride), vector1[i])
+                    addresses.append(str(memory_address + (i * stride)))
                     if write_result == None:
                         print("WARNING: Trying to write on an Invalid Memory Address, debug code!")
+                current_instruction_print[-2] = str("(" + ", ".join(addresses) + ")")
+                del current_instruction_print[-1]
                 # TODO - Test this instruction
             elif instruction_word == "LVI":
+                addresses = []
                 ### --- DECODE : LVI ---
                 destination_reg_idx, operand1_reg_idx, operand2_reg_idx = self.get_operands(current_instruction)
                 ### --- EXECUTE : LVI ---
@@ -772,13 +790,17 @@ class Core():
                 for i in range(self.SRs["VL"].Read(0)[0]):
                     if self.VDMEM.Read(base_address + offsets[i]) != None:
                         result[i] = self.VDMEM.Read(base_address + offsets[i])
+                        addresses.append(str(base_address + offsets[i]))
                     else:
                         result[i] = 0
                         print("WARNING: Reading from Invalid Memory Address, debug code!")
                 write_result = self.RFs["VRF"].Write(destination_reg_idx, result)
                 if write_result == None:
                     break
+                current_instruction_print[-2] = str("(" + ", ".join(addresses) + ")")
+                del current_instruction_print[-1]
             elif instruction_word == "SVI":
+                addresses = []
                 ### --- DECODE : SVI ---
                 destination_reg_idx, operand1_reg_idx, operand2_reg_idx = self.get_operands(current_instruction)
                 ### --- EXECUTE : SVI ---
@@ -794,9 +816,12 @@ class Core():
                     break
                 for i in range(self.SRs["VL"].Read(0)[0]):
                     write_result = self.VDMEM.Write(base_address + offsets[i], vector1[i])
+                    addresses.append(str(base_address + offsets[i]))
                     if write_result == None:
                         print("WARNING: Trying to write on an Invalid Memory Address, debug code!")
                 # TODO - Test this instruction
+                current_instruction_print[-2] = str("(" + ", ".join(addresses) + ")")
+                del current_instruction_print[-1]
             elif instruction_word == "LS":
                 # --- DECODE : LS ---
                 destination_reg_idx, operand1_reg_idx, imm = self.get_operands(current_instruction)
@@ -812,6 +837,8 @@ class Core():
                 write_result = self.RFs["SRF"].Write(destination_reg_idx, [data])
                 if write_result == None:
                     break
+                current_instruction_print[-2] = str("(" + str(memory_address) + ")")
+                del current_instruction_print[-1]
             elif instruction_word == "SS":
                 # --- DECODE : SS ---
                 operand1_reg_idx, operand2_reg_idx, imm = self.get_operands(current_instruction)
@@ -828,6 +855,8 @@ class Core():
                 write_result = self.SDMEM.Write(memory_address, data)
                 if write_result == None:
                     print("WARNING: Trying to write on an Invalid Memory Address, debug code!")
+                current_instruction_print[-2] = str("(" + str(memory_address) + ")")
+                del current_instruction_print[-1]
 
             # ----- SCALAR OPERATIONS
             elif instruction_word == "ADD":
@@ -964,10 +993,17 @@ class Core():
                 if scalar2 == None:
                     break
                 scalar2 = scalar2[0]
+                current_instruction_print[0] = 'B'
                 if scalar1 == scalar2:
                     program_counter = program_counter + imm
-                    print("")
+                    current_instruction_print[1] =  "(" + str(program_counter) + ")"
+                    del current_instruction_print[-1]
+                    del current_instruction_print[-1]
+                    print(" ".join(current_instruction_print))
                     continue
+                current_instruction_print[1] = "(" + str(program_counter + 1) + ")"
+                del current_instruction_print[-1]
+                del current_instruction_print[-1]
                 # TODO - Test this instruction
             elif instruction_word == "BNE":
                 # --- DECODE : BNE ---
@@ -981,10 +1017,17 @@ class Core():
                 if scalar2 == None:
                     break
                 scalar2 = scalar2[0]
+                current_instruction_print[0] = 'B'
                 if scalar1 != scalar2:
                     program_counter = program_counter + imm
-                    print("")
+                    current_instruction_print[1] =  "(" + str(program_counter) + ")"
+                    del current_instruction_print[-1]
+                    del current_instruction_print[-1]
+                    print(" ".join(current_instruction_print))
                     continue
+                current_instruction_print[1] = "(" + str(program_counter + 1) + ")"
+                del current_instruction_print[-1]
+                del current_instruction_print[-1]
                 # TODO - Test this instruction
             elif instruction_word == "BGT":
                 # --- DECODE : BGT ---
@@ -998,10 +1041,17 @@ class Core():
                 if scalar2 == None:
                     break
                 scalar2 = scalar2[0]
+                current_instruction_print[0] = 'B'
                 if scalar1 > scalar2:
                     program_counter = program_counter + imm
-                    print("")
+                    current_instruction_print[1] =  "(" + str(program_counter) + ")"
+                    del current_instruction_print[-1]
+                    del current_instruction_print[-1]
+                    print(" ".join(current_instruction_print))
                     continue
+                current_instruction_print[1] = "(" + str(program_counter + 1) + ")"
+                del current_instruction_print[-1]
+                del current_instruction_print[-1]
                 # TODO - Test this instruction
             elif instruction_word == "BLT":
                 # --- DECODE : BLT ---
@@ -1015,10 +1065,17 @@ class Core():
                 if scalar2 == None:
                     break
                 scalar2 = scalar2[0]
+                current_instruction_print[0] = 'B'
                 if scalar1 < scalar2:
                     program_counter = program_counter + imm
-                    print("")
+                    current_instruction_print[1] =  "(" + str(program_counter) + ")"
+                    del current_instruction_print[-1]
+                    del current_instruction_print[-1]
+                    print(" ".join(current_instruction_print))
                     continue
+                current_instruction_print[1] = "(" + str(program_counter + 1) + ")"
+                del current_instruction_print[-1]
+                del current_instruction_print[-1]
                 # TODO - Test this instruction
             elif instruction_word == "BGE":
                 # --- DECODE : BGE ---
@@ -1032,10 +1089,17 @@ class Core():
                 if scalar2 == None:
                     break
                 scalar2 = scalar2[0]
+                current_instruction_print[0] = 'B'
                 if scalar1 >= scalar2:
                     program_counter = program_counter + imm
-                    print("")
+                    current_instruction_print[1] =  "(" + str(program_counter) + ")"
+                    del current_instruction_print[-1]
+                    del current_instruction_print[-1]
+                    print(" ".join(current_instruction_print))
                     continue
+                current_instruction_print[1] = "(" + str(program_counter + 1) + ")"
+                del current_instruction_print[-1]
+                del current_instruction_print[-1]
                 # TODO - Test this instruction
             elif instruction_word == "BLE":
                 # --- DECODE : BLE ---
@@ -1049,10 +1113,17 @@ class Core():
                 if scalar2 == None:
                     break
                 scalar2 = scalar2[0]
+                current_instruction_print[0] = 'B'
                 if scalar1 <= scalar2:
                     program_counter = program_counter + imm
-                    print("")
+                    current_instruction_print[1] =  "(" + str(program_counter) + ")"
+                    del current_instruction_print[-1]
+                    del current_instruction_print[-1]
+                    print(" ".join(current_instruction_print))
                     continue
+                current_instruction_print[1] = "(" + str(program_counter + 1) + ")"
+                del current_instruction_print[-1]
+                del current_instruction_print[-1]
                 # TODO - Test this instruction
             
             # ----- REGISTER-REGISTER SHUFFLE
@@ -1139,7 +1210,8 @@ class Core():
                 print("DECODE - ERROR: Invalid instruction at program counter: ", program_counter)
 
             program_counter += 1
-            print("")
+            print(" ".join(current_instruction_print))
+            # print("")
 
     def dumpregs(self, iodir):
         for rf in self.RFs.values():
@@ -1165,7 +1237,8 @@ if __name__ == "__main__":
     vcore = Core(imem, sdmem, vdmem)
 
     # Run Core
-    vcore.run()   
+    vcore.run()
+    print("")   
     vcore.dumpregs(iodir)
 
     sdmem.dump()
