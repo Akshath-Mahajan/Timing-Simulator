@@ -1,0 +1,2 @@
+LS SR10 SR1 10
+HALT

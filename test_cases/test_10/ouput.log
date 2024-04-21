@@ -1,0 +1,12 @@
+IO Directory: /Users/rugvedmhatre/Documents/1_Projects/NYU-PCCA-Brandon/Project/phase_1/Test_cases/test_10
+IMEM - Instructions loaded from file: /Users/rugvedmhatre/Documents/1_Projects/NYU-PCCA-Brandon/Project/phase_1/Test_cases/test_10/Code.asm
+SDMEM - Data loaded from file: /Users/rugvedmhatre/Documents/1_Projects/NYU-PCCA-Brandon/Project/phase_1/Test_cases/test_10/SDMEM.txt
+VDMEM - Data loaded from file: /Users/rugvedmhatre/Documents/1_Projects/NYU-PCCA-Brandon/Project/phase_1/Test_cases/test_10/VDMEM.txt
+Program Counter     :  0
+Current Instruction :  ['LS', 'SR10', 'SR1', '10']
+Instruction Word    :  LS
+SRF - ERROR: Invalid register write at index:  10  with register count:  8
+SRF - Dumped data into output file in path: /Users/rugvedmhatre/Documents/1_Projects/NYU-PCCA-Brandon/Project/phase_1/Test_cases/test_10/SRF.txt
+VRF - Dumped data into output file in path: /Users/rugvedmhatre/Documents/1_Projects/NYU-PCCA-Brandon/Project/phase_1/Test_cases/test_10/VRF.txt
+SDMEM - Dumped data into output file in path: /Users/rugvedmhatre/Documents/1_Projects/NYU-PCCA-Brandon/Project/phase_1/Test_cases/test_10/SDMEMOP.txt
+VDMEM - Dumped data into output file in path: /Users/rugvedmhatre/Documents/1_Projects/NYU-PCCA-Brandon/Project/phase_1/Test_cases/test_10/VDMEMOP.txt
