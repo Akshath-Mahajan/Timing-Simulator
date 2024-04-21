@@ -1,0 +1,12 @@
+IO Directory: /Users/rugvedmhatre/Documents/1_Projects/NYU-PCCA-Brandon/Project/phase_1/Test_cases/test_11
+IMEM - Instructions loaded from file: /Users/rugvedmhatre/Documents/1_Projects/NYU-PCCA-Brandon/Project/phase_1/Test_cases/test_11/Code.asm
+SDMEM - Data loaded from file: /Users/rugvedmhatre/Documents/1_Projects/NYU-PCCA-Brandon/Project/phase_1/Test_cases/test_11/SDMEM.txt
+VDMEM - Data loaded from file: /Users/rugvedmhatre/Documents/1_Projects/NYU-PCCA-Brandon/Project/phase_1/Test_cases/test_11/VDMEM.txt
+Program Counter     :  0
+Current Instruction :  ['LS', 'SR1', 'SR0', '99999999999999999999']
+Instruction Word    :  LS
+DMEM - ERROR: Invalid memory access at index:  99999999999999999999  with memory size:  8192
+SRF - Dumped data into output file in path: /Users/rugvedmhatre/Documents/1_Projects/NYU-PCCA-Brandon/Project/phase_1/Test_cases/test_11/SRF.txt
+VRF - Dumped data into output file in path: /Users/rugvedmhatre/Documents/1_Projects/NYU-PCCA-Brandon/Project/phase_1/Test_cases/test_11/VRF.txt
+SDMEM - Dumped data into output file in path: /Users/rugvedmhatre/Documents/1_Projects/NYU-PCCA-Brandon/Project/phase_1/Test_cases/test_11/SDMEMOP.txt
+VDMEM - Dumped data into output file in path: /Users/rugvedmhatre/Documents/1_Projects/NYU-PCCA-Brandon/Project/phase_1/Test_cases/test_11/VDMEMOP.txt
