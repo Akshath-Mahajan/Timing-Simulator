@@ -6,6 +6,8 @@ class IMEM(object):
         self.size = pow(2, 16) # Can hold a maximum of 2^16 instructions.
         self.filepath = os.path.abspath(os.path.join(iodir, "Code.asm"))
         self.instructions = []
+        self.resolved_program = []
+        self.opfilepath = os.path.abspath(os.path.join(iodir, "Resolved_Code.txt"))
 
         try:
             with open(self.filepath, 'r') as insf:
@@ -21,6 +23,15 @@ class IMEM(object):
         else:
             print("IMEM - ERROR: Invalid memory access at index: ", idx, " with memory size: ", self.size)
             return None
+        
+    def dump(self):
+        try:
+            with open(self.opfilepath, 'w') as resolved_code_file:
+                lines = [str(line) + '\n' for line in self.resolved_program]
+                resolved_code_file.writelines(lines)
+                print("IMEM - Dumped resolved code flow file in path:", self.opfilepath)
+        except:
+            print("IMEM - ERROR: Couldn't open file in path:", self.opfilepath)
 
 class DMEM(object):
     # Word addressible - each address contains 32 bits.
@@ -200,8 +211,8 @@ class Core():
             current_instruction = program[program_counter]
             current_instruction_print = current_instruction.copy()
 
-            # print("Program Counter     : ", program_counter)
-            # print("Current Instruction : ", current_instruction)
+            print("Program Counter     : ", program_counter)
+            print("Current Instruction : ", current_instruction)
             
             # --- DECODE + EXECUTE + WRITEBACK Stage ---
             instruction_word = current_instruction[0]
@@ -209,7 +220,7 @@ class Core():
 
             if instruction_word == "HALT":
                 # --- EXECUTE : HALT --- 
-                print(" ".join(current_instruction_print))
+                imem.resolved_program.append(str(" ".join(current_instruction_print)))
                 # print("Stopping the program execution!")
                 break
             
@@ -999,7 +1010,7 @@ class Core():
                     current_instruction_print[1] =  "(" + str(program_counter) + ")"
                     del current_instruction_print[-1]
                     del current_instruction_print[-1]
-                    print(" ".join(current_instruction_print))
+                    imem.resolved_program.append(str(" ".join(current_instruction_print)))
                     continue
                 current_instruction_print[1] = "(" + str(program_counter + 1) + ")"
                 del current_instruction_print[-1]
@@ -1023,7 +1034,7 @@ class Core():
                     current_instruction_print[1] =  "(" + str(program_counter) + ")"
                     del current_instruction_print[-1]
                     del current_instruction_print[-1]
-                    print(" ".join(current_instruction_print))
+                    imem.resolved_program.append(str(" ".join(current_instruction_print)))
                     continue
                 current_instruction_print[1] = "(" + str(program_counter + 1) + ")"
                 del current_instruction_print[-1]
@@ -1047,7 +1058,7 @@ class Core():
                     current_instruction_print[1] =  "(" + str(program_counter) + ")"
                     del current_instruction_print[-1]
                     del current_instruction_print[-1]
-                    print(" ".join(current_instruction_print))
+                    imem.resolved_program.append(str(" ".join(current_instruction_print)))
                     continue
                 current_instruction_print[1] = "(" + str(program_counter + 1) + ")"
                 del current_instruction_print[-1]
@@ -1071,7 +1082,7 @@ class Core():
                     current_instruction_print[1] =  "(" + str(program_counter) + ")"
                     del current_instruction_print[-1]
                     del current_instruction_print[-1]
-                    print(" ".join(current_instruction_print))
+                    imem.resolved_program.append(str(" ".join(current_instruction_print)))
                     continue
                 current_instruction_print[1] = "(" + str(program_counter + 1) + ")"
                 del current_instruction_print[-1]
@@ -1095,7 +1106,7 @@ class Core():
                     current_instruction_print[1] =  "(" + str(program_counter) + ")"
                     del current_instruction_print[-1]
                     del current_instruction_print[-1]
-                    print(" ".join(current_instruction_print))
+                    imem.resolved_program.append(str(" ".join(current_instruction_print)))
                     continue
                 current_instruction_print[1] = "(" + str(program_counter + 1) + ")"
                 del current_instruction_print[-1]
@@ -1119,7 +1130,7 @@ class Core():
                     current_instruction_print[1] =  "(" + str(program_counter) + ")"
                     del current_instruction_print[-1]
                     del current_instruction_print[-1]
-                    print(" ".join(current_instruction_print))
+                    imem.resolved_program.append(str(" ".join(current_instruction_print)))
                     continue
                 current_instruction_print[1] = "(" + str(program_counter + 1) + ")"
                 del current_instruction_print[-1]
@@ -1210,8 +1221,8 @@ class Core():
                 print("DECODE - ERROR: Invalid instruction at program counter: ", program_counter)
 
             program_counter += 1
-            print(" ".join(current_instruction_print))
-            # print("")
+            imem.resolved_program.append(str(" ".join(current_instruction_print)))
+            print("")
 
     def dumpregs(self, iodir):
         for rf in self.RFs.values():
@@ -1243,5 +1254,6 @@ if __name__ == "__main__":
 
     sdmem.dump()
     vdmem.dump()
+    imem.dump()
 
     # THE END
