@@ -1,3 +1,8 @@
+# -------------------------------------------------------------
+# Title   : Vector Processor - Timing Simulator
+# Authors : Rugved Mhatre (rrm9598), Akshath Mahajan (avm6288)
+# -------------------------------------------------------------
+
 import os
 import argparse
 
