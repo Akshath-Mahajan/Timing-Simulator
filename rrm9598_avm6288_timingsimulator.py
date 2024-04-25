@@ -14,8 +14,13 @@ class Config(object):
         try:
             with open(self.filepath, 'r') as conf:
                 self.parameters = {line.split('=')[0].strip(): line.split('=')[1].split('#')[0].strip() for line in conf.readlines() if not (line.startswith('#') or line.strip() == '')}
+            
+            for key in self.parameters.keys():
+                # Converting config values from string to int
+                self.parameters[key] = int(self.parameters[key])
+            
             print("Config - Parameters loaded from file:", self.filepath)
-            print("Config parameters:", self.parameters)
+            # print("Config parameters:", self.parameters)
         except:
             print("Config - ERROR: Couldn't open file in path:", self.filepath)
             raise
@@ -23,7 +28,7 @@ class Config(object):
 class IMEM(object):
     def __init__(self, iodir):
         self.size = pow(2, 16) # Can hold a maximum of 2^16 instructions.
-        self.filepath = os.path.abspath(os.path.join(iodir, "Code.asm"))
+        self.filepath = os.path.abspath(os.path.join(iodir, "Resolved_Code.txt"))
         self.instructions = []
 
         try:
@@ -107,20 +112,78 @@ class RegisterFile(object):
             print(self.name, "- ERROR: Couldn't open output file in path:", opfilepath)
             raise
 
+class Queue():
+    def __init__(self, max_length: int):
+        self.queue = []
+        self.max_length = max_length
+    
+    def add(self, item):
+        if (len(self.queue) < self.max_length):
+            self.queue.append(item)
+            return True
+        else:
+            print("ERROR - Queue already full!")
+            return False
+        
+    def pop(self):
+        if (len(self.queue) > 0):
+            item = self.queue[0]
+            self.queue = self.queue[1:]
+            return item
+        else:
+            print("ERROR - Queue is empty!")
+            return None
+        
+    def __str__(self):
+        return_string = '[' + ", ".join(self.queue) + ']'
+        return return_string
+
 class Core():
-    def __init__(self, imem, sdmem, vdmem):
-        self.IMEM = imem
-        self.SDMEM = sdmem
-        self.VDMEM = vdmem
+    def __init__(self, imem: IMEM, sdmem: DMEM, vdmem: DMEM, config: Config):
+        # cycle counter
+        self.cycle = 0
 
         self.RFs = {"SRF": RegisterFile("SRF", 8),
                     "VRF": RegisterFile("VRF", 8, 64)}
         
-        # Your code here.
         
     def run(self):
+        # Printing current VMIPS configuration
+        print("")
+        print("VMIPS Configuration :")
+        for key in config.parameters.keys():
+            if len(key) < 15:
+                print(key, "\t\t:" , config.parameters[key])
+            else:
+                print(key, "\t:" , config.parameters[key])
+        print("")
+
+        # Line Number to iterate through the code file
+        line_number = 0
+
         while(True):
-            break # Replace this line with your code.
+            # --- FETCH Stage ---
+            current_instruction = imem.Read(line_number)
+            current_instruction = current_instruction.split(" ")
+
+            print("Current Instruction :", current_instruction)
+            print("")
+
+            # --- DECODE + EXECUTE + WRITEBACK Stage ---
+            instruction_word = current_instruction[0]
+            # print("Instruction Word    : ", instruction_word)
+
+            if instruction_word == "HALT":
+                # --- EXECUTE : HALT --- 
+                self.cycle += 1
+                break
+
+            line_number += 1
+            self.cycle += 1
+        
+        print("------------------------------")
+        print(" Total Cycles: ", self.cycle)
+        print("------------------------------")
 
     def dumpregs(self, iodir):
         for rf in self.RFs.values():
@@ -146,13 +209,13 @@ if __name__ == "__main__":
     vdmem = DMEM("VDMEM", iodir, 17) # 512 KB is 2^19 bytes = 2^17 K 32-bit words. 
 
     # Create Vector Core
-    vcore = Core(imem, sdmem, vdmem)
+    vcore = Core(imem, sdmem, vdmem, config)
 
     # Run Core
     vcore.run()   
-    vcore.dumpregs(iodir)
+    # vcore.dumpregs(iodir)
 
-    sdmem.dump()
-    vdmem.dump()
+    # sdmem.dump()
+    # vdmem.dump()
 
     # THE END
