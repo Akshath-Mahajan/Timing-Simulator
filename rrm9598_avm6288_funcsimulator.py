@@ -1,3 +1,8 @@
+# -------------------------------------------------------------
+# Title   : Vector Processor - Functional Simulator
+# Authors : Rugved Mhatre (rrm9598), Akshath Mahajan (avm6288)
+# -------------------------------------------------------------
+
 import os
 import argparse
 
@@ -716,7 +721,7 @@ class Core():
                 write_result = self.RFs["VRF"].Write(destination_reg_idx, result)
                 if write_result == None:
                     break
-                current_instruction_print[-1] = str("(" + ", ".join(addresses) + ")")
+                current_instruction_print[-1] = str("(" + ",".join(addresses) + ")")
             elif instruction_word == "SV":
                 addresses = []
                 ### --- DECODE : SV ---
@@ -734,7 +739,7 @@ class Core():
                     addresses.append(str(memory_address + i))
                     if write_result == None:
                         print("WARNING: Trying to write on an Invalid Memory Address, debug code!")
-                current_instruction_print[-1] = str("(" + ", ".join(addresses) + ")")
+                current_instruction_print[-1] = str("(" + ",".join(addresses) + ")")
             elif instruction_word == "LVWS":
                 addresses = []
                 ### --- DECODE : LVWS ---
@@ -759,7 +764,7 @@ class Core():
                 write_result = self.RFs["VRF"].Write(destination_reg_idx, result)
                 if write_result == None:
                     break
-                current_instruction_print[-2] = str("(" + ", ".join(addresses) + ")")
+                current_instruction_print[-2] = str("(" + ",".join(addresses) + ")")
                 del current_instruction_print[-1]
             elif instruction_word == "SVWS":
                 addresses = []
@@ -782,7 +787,7 @@ class Core():
                     addresses.append(str(memory_address + (i * stride)))
                     if write_result == None:
                         print("WARNING: Trying to write on an Invalid Memory Address, debug code!")
-                current_instruction_print[-2] = str("(" + ", ".join(addresses) + ")")
+                current_instruction_print[-2] = str("(" + ",".join(addresses) + ")")
                 del current_instruction_print[-1]
                 # TODO - Test this instruction
             elif instruction_word == "LVI":
@@ -808,7 +813,7 @@ class Core():
                 write_result = self.RFs["VRF"].Write(destination_reg_idx, result)
                 if write_result == None:
                     break
-                current_instruction_print[-2] = str("(" + ", ".join(addresses) + ")")
+                current_instruction_print[-2] = str("(" + ",".join(addresses) + ")")
                 del current_instruction_print[-1]
             elif instruction_word == "SVI":
                 addresses = []
@@ -831,7 +836,7 @@ class Core():
                     if write_result == None:
                         print("WARNING: Trying to write on an Invalid Memory Address, debug code!")
                 # TODO - Test this instruction
-                current_instruction_print[-2] = str("(" + ", ".join(addresses) + ")")
+                current_instruction_print[-2] = str("(" + ",".join(addresses) + ")")
                 del current_instruction_print[-1]
             elif instruction_word == "LS":
                 # --- DECODE : LS ---
