@@ -24,6 +24,15 @@ class Config(object):
         except:
             print("Config - ERROR: Couldn't open file in path:", self.filepath)
             raise
+    
+    def printConfig(self):
+        print("VMIPS Configuration :")
+        for key in self.parameters.keys():
+            if len(key) < 15:
+                print(key, "\t\t:" , self.parameters[key])
+            else:
+                print(key, "\t:" , self.parameters[key])
+        print("")
 
 class IMEM(object):
     def __init__(self, iodir):
@@ -67,11 +76,20 @@ class DMEM(object):
             print(self.name, "- ERROR: Couldn't open input file in path:", self.ipfilepath)
             raise
 
-    def Read(self, idx): # Use this to read from DMEM.
-        pass # Replace this line with your code here.
+    def Read(self, idx: int): # Use this to read from DMEM.
+        if idx < self.size:
+            return self.data[idx]
+        else:
+            print("DMEM - ERROR: Invalid memory access at index: ", idx, " with memory size: ", self.size)
+            return None
 
-    def Write(self, idx, val): # Use this to write into DMEM.
-        pass # Replace this line with your code here.
+    def Write(self, idx: int, val: int): # Use this to write into DMEM.
+        if idx < self.size:
+            self.data[idx] = val
+            return self.data[idx]
+        else:
+            print("DMEM - ERROR: Invalid memory access at index: ", idx, " with memory size: ", self.size)
+            return None
 
     def dump(self):
         try:
@@ -93,11 +111,35 @@ class RegisterFile(object):
         self.max_value  = pow(2, self.reg_bits-1) - 1
         self.registers  = [[0x0 for e in range(self.vec_length)] for r in range(self.reg_count)] # list of lists of integers
 
-    def Read(self, idx):
-        pass # Replace this line with your code.
+    def Read(self, idx: int):
+        if idx < self.reg_count:
+            return self.registers[idx]
+        else:
+            print(self.name, "- ERROR: Invalid register access at index: ", idx, " with register count: ", self.reg_count)
+            return None
 
-    def Write(self, idx, val):
-        pass # Replace this line with your code.
+    def Write(self, idx: int, val: list):
+        if idx < self.reg_count:
+            if len(val) == self.vec_length:
+                for i in range(len(val)):
+                    if val[i] > self.max_value:
+                        print(self.name, "- WARNING: Register write overflow at index: ", idx, " with vector index: ", i)
+                        # Handling Overflow Exception by setting the value as the maximum value
+                        val[i] = self.max_value
+                    elif val[i] < self.min_value:
+                        print(self.name, "- WARNING: Register write overflow at index: ", idx, " with vector index: ", i)
+                        # Handling Overflow Exception by setting the value as the minimum value
+                        val[i] = self.min_value
+                    else:
+                        pass
+                self.registers[idx] = val
+                return self.registers[idx]
+            else:
+                print(self.name, "- ERROR: Invalid register write at index: ", idx, " with vector length: ", len(val))
+                return None
+        else:
+            print(self.name, "- ERROR: Invalid register write at index: ", idx, " with register count: ", self.reg_count)
+            return None
 
     def dump(self, iodir):
         opfilepath = os.path.abspath(os.path.join(iodir, self.name + ".txt"))
@@ -137,6 +179,33 @@ class Queue():
     def __str__(self):
         return_string = '[' + ", ".join(self.queue) + ']'
         return return_string
+    
+    def __len__(self):
+        return len(self.queue)
+    
+class BusyBoard():
+    def __init__(self, length: int):
+        self.length = length
+        self.register_statuses = [0 for _ in range(self.length)]
+
+    def setBusy(self, idx: int):
+        if idx < self.length:
+            self.register_statuses[idx] = 1
+        else:
+            print("ERROR - Invalid index access in the busy board!")
+    
+    def clearStatus(self, idx: int):
+        if idx < self.length:
+            self.register_statuses[idx] = 0
+        else:
+            print("ERROR - Invalid index access in the busy board!")
+
+    def getStatus(self, idx: int):
+        if idx < self.length:
+            return self.register_statuses[idx]
+        else:
+            print("ERROR - Invalid index access in the busy board!")
+            return None
 
 class Core():
     def __init__(self, imem: IMEM, sdmem: DMEM, vdmem: DMEM, config: Config):
@@ -146,17 +215,22 @@ class Core():
         self.RFs = {"SRF": RegisterFile("SRF", 8),
                     "VRF": RegisterFile("VRF", 8, 64)}
         
+        # Vector Length Register
+        self.VLR = RegisterFile("VL", 1)
+        self.VLR.Write(0, [self.RFs["VRF"].vec_length])
+        
+        # Initializing Vector Data Queue, Vector Compute Queue, Scalar Compute Queue
+        self.VDQ = Queue(config.parameters["dataQueueDepth"])
+        self.VCQ = Queue(config.parameters["computeQueueDepth"])
+        self.SCQ = Queue(config.parameters["computeQueueDepth"])
+
+        self.SRFBB = BusyBoard(self.RFs["SRF"].reg_count)
+        self.VRFBB = BusyBoard(self.RFs["VRF"].reg_count)
         
     def run(self):
         # Printing current VMIPS configuration
         print("")
-        print("VMIPS Configuration :")
-        for key in config.parameters.keys():
-            if len(key) < 15:
-                print(key, "\t\t:" , config.parameters[key])
-            else:
-                print(key, "\t:" , config.parameters[key])
-        print("")
+        config.printConfig()
 
         # Line Number to iterate through the code file
         line_number = 0
@@ -166,20 +240,48 @@ class Core():
             current_instruction = imem.Read(line_number)
             current_instruction = current_instruction.split(" ")
 
+            line_number += 1
+            self.cycle += 1
+
             print("Current Instruction :", current_instruction)
             print("")
 
-            # --- DECODE + EXECUTE + WRITEBACK Stage ---
-            instruction_word = current_instruction[0]
-            # print("Instruction Word    : ", instruction_word)
+            # --- DECODE Stage ---
+            instruction_word = str(current_instruction[0])
+            self.cycle += 1
 
             if instruction_word == "HALT":
                 # --- EXECUTE : HALT --- 
-                self.cycle += 1
                 break
+            elif instruction_word.startswith("LV") or instruction_word.startswith("SV"):
+                if len(self.VDQ) == self.VDQ.max_length:
+                    print("ERROR - VDQ IS FULL! Cannot fetch any more vector load/store instructions!")
+                    # reducing line number to re-fetch instruction, and check again if the queue is empty
+                    line_number -= 1
+                else:
+                    self.VDQ.add(current_instruction)
+            elif instruction_word.startswith("ADDV") or instruction_word.startswith("SUBV") or instruction_word.startswith("MULV") or instruction_word.startswith("DIVV"):
+                if len(self.VCQ) == self.VCQ.max_length:
+                    print("ERROR - VCQ IS FULL! Cannot fetch any more vector compute instructions!")
+                    # reducing line number to re-fetch instruction, and check again if the queue is empty
+                    line_number -= 1
+                else:
+                    self.VCQ.add(current_instruction)
+            elif "PACK" in instruction_word:
+                if len(self.VCQ) == self.VCQ.max_length:
+                    print("ERROR - VCQ IS FULL! Cannot fetch any more vector compute instructions!")
+                    # reducing line number to re-fetch instruction, and check again if the queue is empty
+                    line_number -= 1
+                else:
+                    self.VCQ.add(current_instruction)
+            else:
+                if len(self.SCQ) == self.SCQ.max_length:
+                    print("ERROR - SCQ IS FULL! Cannot fetch any more vector compute instructions!")
+                    # reducing line number to re-fetch instruction, and check again if the queue is empty
+                    line_number -= 1
+                else:
+                    self.SCQ.add(current_instruction)
 
-            line_number += 1
-            self.cycle += 1
         
         print("------------------------------")
         print(" Total Cycles: ", self.cycle)
