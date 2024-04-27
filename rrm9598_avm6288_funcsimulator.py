@@ -149,6 +149,9 @@ class Core():
         
         # Initialising Vector Length Register as the MVL
         self.SRs["VL"].Write(0, [self.RFs["VRF"].vec_length])
+        
+        # Intialising Vector Mask Register with all 1s
+        self.SRs["VM"].Write(0, [int('1' * self.RFs["VRF"].vec_length, 2)])
 
     def get_operands(self, instruction: list):
         if len(instruction) == 4:
