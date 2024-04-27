@@ -12,7 +12,7 @@
 
 ## VMIPS Architecture
 
-![Vector Processor Block Diagram](https://github.com/rugvedmhatre/Vector-Timing-Simulator/blob/main/images/Vector-Block-Diagram.svg?raw=true)
+![Vector Processor Block Diagram](https://github.com/rugvedmhatre/Vector-Timing-Simulator/blob/main/images/Vector-Block-Diagram.jpg?raw=true)
 
 - 1 Scalar Functional Unit
 - 1 Vector Load/Store Functional Unit
@@ -43,12 +43,14 @@ Furthermore, the VRFs have only 1 read and 1 write port. Hence, simulatneous rea
 
 We show an example of the timings of a simple load vector program.
 
+#### Code
+
 ```
 LV VR1 SR0
 HALT
 ```
 
-__Execution Flow:__
+#### Execution Flow
 
 - In the $1^{st}$ cycle, `LV VR1 SR0` is fetched. 
 - In the $2^{nd}$ cycle, `HALT` is fetched, and `LV VR1 SR0` is decoded, checked for strucutral hazards, and since there are no hazards, it is sent to the dispatch queue.
@@ -59,3 +61,17 @@ __Execution Flow:__
 - In the $78^{th}$ cycle, the `HALT` instruction is executed and the program stops.
 
 ![Example 1 Timing Diagram](https://github.com/rugvedmhatre/Vector-Timing-Simulator/blob/main/images/Example1_Timing_Diagram.png?raw=true)
+
+## Running Timing Simulator
+
+1. Execute the functional simulator to generate the resolved code flow, and to verify the functioning of the Vector Processor.
+    
+    ```Shell
+    python rrm9598_avm6288_funcsimulator.py --iodir test_cases/test_0
+    ```
+
+2. Execute the timing simulator to verify the timing performance of the Vector Processor.
+
+    ```Shell
+    python rrm9598_avm6288_timingsimulator.py --iodir test_cases/test_0
+    ```
