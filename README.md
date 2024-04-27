@@ -13,6 +13,7 @@
 ## VMIPS Architecture
 
 ![Vector Processor Block Diagram](https://github.com/rugvedmhatre/Vector-Timing-Simulator/blob/main/images/Vector-Block-Diagram.jpg?raw=true)
+
 *Vector Processor Block Diagram*
 
 - 1 Scalar Functional Unit
@@ -62,9 +63,11 @@ HALT
 - In the $78^{th}$ cycle, the `HALT` instruction is executed and the program stops.
 
 ![Example 1 Timing Diagram](https://github.com/rugvedmhatre/Vector-Timing-Simulator/blob/main/images/Example1_Timing_Diagram.png?raw=true)
+
 *Example 1 : Timing Diagram*
 
 ![Example 1 Timing Diagram - Memory Bank View](https://github.com/rugvedmhatre/Vector-Timing-Simulator/blob/main/images/Example1_Timing_Diagram_Memory_Bank_View.png?raw=true)
+
 *Example 1 : Timing Diagram - Memory Bank View*
 
 ## Running Timing Simulator
