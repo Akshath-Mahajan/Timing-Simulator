@@ -52,7 +52,7 @@ __Execution Flow:__
 
 - In the $1^{st}$ cycle, `LV VR1 SR0` is fetched. 
 - In the $2^{nd}$ cycle, `HALT` is fetched, and `LV VR1 SR0` is decoded, checked for strucutral hazards, and since there are no hazards, it is sent to the dispatch queue.
-- In the $3^{rd}$ cycle, `HALT` is decoded, and is stalled, as it will wait for all the current instructions to be completed. `LV VR1 SR0` instruction is popped off the queue and starts executing. The pipeline depth for vector load instruction is 11 cycles.
+- In the $3^{rd}$ cycle, `HALT` is decoded, and is stalled, as it will wait for all the current instructions to be completed. `LV VR1 SR0` instruction is popped off the queue and starts executing. The pipeline depth for vector load instruction is 11 cycles, so 1 execution cycle completes in this cycle and now 10 cycles remain.
 - In the $13^{th}$ cycle, `LV VR1 SR0` instruction triggers the Vector Data Memory Bank for the $1^{st}$ element address. The bank busy time is 2 cycles, so 1 cycle completes in this cycle, and now in next cycle the $1^{st}$ element is populated in the `VR1` register.
 - In the $14^{th}$ cycle, we have populated the $1^{st}$ element in the `VR1` register, and triggered the Vector Data Memory Bank for the $2^{nd}$ element address.
 - In the $77^{th}$ cycle, we have populated the $64^{th}$ element in the `VR1` register, and it is cleared off the busy board. `HALT` instruction stall is removed, and is moved to the dispatch queue.
