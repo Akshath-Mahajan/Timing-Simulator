@@ -676,7 +676,7 @@ class Core():
             self.execute()
 
             decoded_instr = self.decode(instr)
-            self.dispatch(decoded_instr)
+            self.dispatch_to_queue(decoded_instr)
             self.pop_from_queues()
             
             instr = self.fetch(instr_idx)
