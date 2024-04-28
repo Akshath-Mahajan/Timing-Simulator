@@ -634,147 +634,54 @@ class Core():
         else:
             print("Scalar Compute Queue is full!")
 
+    def pop_from_queues(self):
+        Qs = [self.VDQ, self.VCQ, self.SCQ]
+        _mapping = {
+            "VectorLS": self.VectorLS,
+            "VectorADD": self.VectorADD,
+            "VectorMUL": self.VectorMUL,
+            "VectorDIV": self.VectorDIV,
+            "VectorSHUF": self.VectorSHUF,
+            "ScalarU": self.ScalarU
+        }
+        for q in Qs:
+            if len(q) > 0:
+                instr = q.getNextInQueue()
+                fu = _mapping[instr["functionalUnit"]]
+                if fu.getStatus() == "free":
+                    q.pop()
+                    fu.addInstr(instr)
+                # else:
+                #     print("Stalling the instruction - {} is busy".format(instr["functionalUnit"]))    # fu.setBusy()
+            # else:
+            #     print("No instructions in Queue:", q)
 
+    def fetch(self, idx):
+        if idx < len(self.imem.instructions):
+            instr = self.imem.Read(idx)
+            return instr.split(" ")
+        
     def run(self):
         # Printing current VMIPS configuration
         print("")
         self.config.printConfig()
 
-        # Line Number to iterate through the code file
-        line_number = 0
-        
-        # Current instruction is initialised as None
-        current_instruction = None
+        # Index to iterate through the code file
+        instr_idx = 0
 
-        # Decoded Instructions List = list which holds all inflight instructions that are yet to be decoded and pushed to the queue
-        # All stalled instructions  are present here...
-        decoded_instructions = []
+        # Decode Stage List - list which holds all inflight instructions that are yet to be decoded and pushed to the queue
+        # decode_stage = []
 
         while(True):
+            self.execute()
 
-            # TODO - Add halting conditing here.
+            decoded_instr = self.decode(instr)
+            self.dispatch(decoded_instr)
+            self.pop_from_queues()
             
+            instr = self.fetch(instr_idx)
 
-            # --- Executing Active Instructions ---
-            # TODO - WRITE THIS CODE!
-            if self.VectorLS.getStatus() == 'busy':
-                print("Executing inflight Vector Load/Store instructions...")
-            else:
-                print("No inflight Vector Load/Store instructions!")
-            
-            if self.VectorADD.getStatus() == 'busy':
-                print("Executing inflight Vector ADD/SUB instructions...")
-            else:
-                print("No inflight Vector ADD/SUB instructions!")
-
-            if self.VectorMUL.getStatus() == 'busy':
-                print("Executing inflight Vector MUL instructions...")
-            else:
-                print("No inflight Vector MUL instructions!")
-
-            if self.VectorDIV.getStatus() == 'busy':
-                print("Executing inflight Vector DIV instructions...")
-            else:
-                print("No inflight Vector DIV instructions!")
-
-            if self.VectorSHUF.getStatus() == 'busy':
-                print("Executing inflight Vector Shuffle instructions...")
-            else:
-                print("No inflight Vector Shuffle instructions!")
-
-            if self.ScalarU.getStatus() == 'busy':
-                print("Executing inflight Scalar instructions...")
-            else:
-                print("No inflight Scalar instructions!")
-
-
-            
-            # --- Pop Instructions ---
-            # TODO - ADD CODE TO SEND TO BACKEND FOR EXECUTION
-            # Checking Vector Data Queue
-            if len(self.VDQ) != 0:
-                # Get the next instruction from VDQ
-                next_instruction = self.VDQ.getNextInQueue()
-                if self.VectorLS.getStatus() == 'free':
-                    self.VDQ.pop()
-                    self.VectorLS.setBusy()
-                else:
-                    print("Stalling the instruction, as Vector Load/Store Unit is busy!")
-            else:
-                print("No instructions in Vector Data Queue!")
-            
-            # Checking Vector Compute Queue
-            if len(self.VCQ) != 0:
-                # Get the next instruction from VCQ
-                next_instruction = self.VCQ.getNextInQueue()
-                # Get the instruction unit
-                if next_instruction['functionalUnit'] == 'VectorADD':
-                    # Checking if the Vector ADD/SUB functional unit is available
-                    if self.VectorADD.getStatus() == 'free':
-                        self.VCQ.pop()
-                        self.VectorADD.setBusy()
-                    else:
-                        print("Stalling the instruction, as Vector ADD/SUB Unit is busy!")
-                elif next_instruction['functionalUnit'] == 'VectorMUL':
-                    # Checking if the Vector MUL functional unit is available
-                    if self.VectorMUL.getStatus() == 'free':
-                        self.VCQ.pop()
-                        self.VectorMUL.setBusy()
-                    else:
-                        print("Stalling the instruction, as Vector MUL Unit is busy!")
-                elif next_instruction['functionalUnit'] == 'VectorDIV':
-                    # Checking if the Vector DIV functional unit is available
-                    if self.VectorDIV.getStatus() == 'free':
-                        self.VCQ.pop()
-                        self.VectorDIV.setBusy()
-                    else:
-                        print("Stalling the instruction, as Vector DIV Unit is busy!")
-                elif next_instruction['functionalUnit'] == 'VectorSHUF':
-                    # Checking if the Vector Shuffle functional unit is available
-                    if self.VectorSHUF.getStatus() == 'free':
-                        self.VCQ.pop()
-                        self.VectorSHUF.setBusy()
-                    else:
-                        print("Stalling the instruction, as Vector Shuffle Unit is busy!")
-                else:
-                    print("ERROR - Invalid Functional Unit! Check code!")
-            else:
-                print("No instructions in Vector Compute Queue!")
-            
-            # Checking Scalar Compute Queue
-            if len(self.SCQ) != 0:
-                # Get the next instruction from SCQ
-                next_instruction = self.SCQ.getNextInQueue()
-                # Checking if the Scalar functional unit is available
-                if self.ScalarU.getStatus() == 'free':
-                    self.SCQ.pop()
-                    self.ScalarU.setBusy()
-                else:
-                    print("Stalling the instruction, as Scalar Unit is busy!")
-            else:
-                print("No instructions in Scalar Compute Queue!")
-
-
-            # --- Decoding Instructions ---
-            # TODO - CHANGE ALL THIS CODE!
-            if current_instruction != None:
-                instruction_dict = self.decode(current_instruction)
-                decoded_instructions.append(instruction_dict)
-
-            # --- Dispatch to Queue ---
-            if len(decoded_instructions) != 0:
-                for instruction in decoded_instructions:
-                    self.dispatch_to_queue(instruction)
-
-            # --- Fetching Instructions ---
-            # TODO - VERIFY ALL THIS CODE!
-            line = self.imem.Read(line_number)
-            current_instruction = line.split(" ")
-            
-            print("Fetched Instruction :", current_instruction)
-            print("")
-            
-            line_number += 1
+            instr_idx += 1    
             self.cycle += 1
         
         print("------------------------------")
