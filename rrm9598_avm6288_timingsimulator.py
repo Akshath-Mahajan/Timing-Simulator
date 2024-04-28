@@ -194,23 +194,23 @@ class Queue():
 class BusyBoard():
     def __init__(self, length: int):
         self.length = length
-        self.register_statuses = ['free' for _ in range(self.length)]
+        self.statuses = ['free' for _ in range(self.length)]
 
     def setBusy(self, idx = 0):
         if idx < self.length:
-            self.register_statuses[idx] = 'busy'
+            self.statuses[idx] = 'busy'
         else:
             print("ERROR - Invalid index access in the busy board!")
     
     def clearStatus(self, idx = 0):
         if idx < self.length:
-            self.register_statuses[idx] = 'free'
+            self.statuses[idx] = 'free'
         else:
             print("ERROR - Invalid index access in the busy board!")
 
     def getStatus(self, idx = 0):
         if idx < self.length:
-            return self.register_statuses[idx]
+            return self.statuses[idx]
         else:
             print("ERROR - Invalid index access in the busy board!")
             return None
@@ -231,7 +231,7 @@ class FU(BusyBoard):
             self.clearStatus()
             return True
         return False
-    # def is
+    
 # TODO - Check if you can create classes for Frontend and Backend
 
 class Core():
@@ -267,6 +267,42 @@ class Core():
         self.VectorDIV = FU()
         self.VectorSHUF = FU()
         self.ScalarU = FU()
+
+    
+    def get_operands(self, instruction: list):
+        if len(instruction) == 4:
+            destination = str(instruction[1])
+            operand1 = str(instruction[2])
+            operand2 = str(instruction[3])
+            destination_reg_idx = int(destination[2:])
+            operand1_reg_idx = int(operand1[2:])
+            if operand2.isdigit() or operand2[0] == '-':
+                imm = int(operand2)
+                return [destination_reg_idx, operand1_reg_idx, imm]
+            else:
+                operand2_reg_idx = int(operand2[2:])
+                return [destination_reg_idx, operand1_reg_idx, operand2_reg_idx]
+        elif len(instruction) == 3:
+            destination = str(instruction[1])
+            operand1 = str(instruction[2])
+            destination_reg_idx = int(destination[2:])
+            if operand1.startswith('('):
+                address = eval(operand1)
+                return [destination_reg_idx, address]
+            else:
+                operand1_reg_idx = int(operand1[2:])
+                return [destination_reg_idx, operand1_reg_idx]
+        elif len(instruction) == 2:
+            operand1 = str(instruction[1])
+            if operand1.startswith('('):
+                address = eval(operand1)
+                return [address]
+            else:
+                operand1_reg_idx = int(operand1[2:])
+                return [operand1_reg_idx]
+        else:
+            return None
+    
     
     def calculate_bank_cycles(self, addresses):
         # Takes in addersses, return n_cycles
@@ -307,6 +343,7 @@ class Core():
         # If anything is left in bank busy, then add it to n_banks
         return n_cycles + max(banks)
     
+    
     def execute(self):
         # instr has FU
         FUs = [self.VectorLS, self.VectorADD, self.VectorDIV, self.VectorMUL, self.VectorSHUF, self.ScalarU]
@@ -322,10 +359,282 @@ class Core():
                             self.SRFBB.clearStatus(idx)
                         if _type == "vector":
                             self.VRFBB.clearStatus(idx)
-        
-                        
 
     
+    def decode(self, current_instruction: list):
+        '''
+        Returns an Instruction Dictionary = {
+            instructionWord: ,
+            functionalUnit: VectorLS/VectorADD/VectorMUL/VectorDIV/VectorSHUF/ScalarU,
+            operands: list(int),
+            destination: (int),
+            cycles: (int),
+            operand_with_type: list([idx, scalar])
+        }
+        '''
+
+        instruction_dict = dict()
+        instruction_word = str(current_instruction[0])
+                
+        if instruction_word == 'HALT':
+            instruction_dict['instructionWord'] = instruction_word
+            instruction_dict['functionalUnit'] = 'ScalarU'
+            instruction_dict['operands'] = None
+            instruction_dict['destination'] = None
+            instruction_dict['cycles'] = 1
+            instruction_dict['operand_with_type'] = []
+        elif instruction_word == 'ADDVV' or instruction_word == 'SUBVV':
+            operands = self.get_operands(current_instruction)
+            instruction_dict['instructionWord'] = instruction_word
+            instruction_dict['functionalUnit'] = 'VectorADD'
+            instruction_dict['operands'] = [operands[1], operands[2]]
+            instruction_dict['destination'] = [operands[0]]
+            instruction_dict['cycles'] = self.config.parameters['pipelineDepthAdd'] + (self.VLR.Read(0)[0] // self.config.parameters['numLanes']) - 1
+            instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'vector']]
+        elif instruction_word == 'ADDVS' or instruction_word == 'SUBVS':
+            operands = self.get_operands(current_instruction)
+            instruction_dict['instructionWord'] = instruction_word
+            instruction_dict['functionalUnit'] = 'VectorADD'
+            instruction_dict['operands'] = [operands[1], operands[2]]
+            instruction_dict['destination'] = [operands[0]]
+            instruction_dict['cycles'] = self.config.parameters['pipelineDepthAdd'] + (self.VLR.Read(0)[0] // self.config.parameters['numLanes']) - 1
+            instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'scalar']]
+        elif instruction_word == 'MULVV':
+            operands = self.get_operands(current_instruction)
+            instruction_dict['instructionWord'] = instruction_word
+            instruction_dict['functionalUnit'] = 'VectorMUL'
+            instruction_dict['operands'] = [operands[1], operands[2]]
+            instruction_dict['destination'] = [operands[0]]
+            instruction_dict['cycles'] = self.config.parameters['pipelineDepthMul'] + (self.VLR.Read(0)[0] // self.config.parameters['numLanes']) - 1
+            instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'vector']]
+        elif instruction_word == 'MULVS':
+            operands = self.get_operands(current_instruction)
+            instruction_dict['instructionWord'] = instruction_word
+            instruction_dict['functionalUnit'] = 'VectorMUL'
+            instruction_dict['operands'] = [operands[1], operands[2]]
+            instruction_dict['destination'] = [operands[0]]
+            instruction_dict['cycles'] = self.config.parameters['pipelineDepthMul'] + (self.VLR.Read(0)[0] // self.config.parameters['numLanes']) - 1
+            instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'scalar']]
+        elif instruction_word == 'DIVVV':
+            operands = self.get_operands(current_instruction)
+            instruction_dict['instructionWord'] = instruction_word
+            instruction_dict['functionalUnit'] = 'VectorDIV'
+            instruction_dict['operands'] = [operands[1], operands[2]]
+            instruction_dict['destination'] = [operands[0]]
+            instruction_dict['cycles'] = self.config.parameters['pipelineDepthDiv'] + (self.VLR.Read(0)[0] // self.config.parameters['numLanes']) - 1
+            instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'vector']]
+        elif instruction_word == 'DIVVS':
+            operands = self.get_operands(current_instruction)
+            instruction_dict['instructionWord'] = instruction_word
+            instruction_dict['functionalUnit'] = 'VectorDIV'
+            instruction_dict['operands'] = [operands[1], operands[2]]
+            instruction_dict['destination'] = [operands[0]]
+            instruction_dict['cycles'] = self.config.parameters['pipelineDepthDiv'] + (self.VLR.Read(0)[0] // self.config.parameters['numLanes']) - 1
+            instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'scalar']]
+        elif instruction_word.startswith('S') and instruction_word.endswith('VV'):
+            operands = self.get_operands(current_instruction)
+            instruction_dict['instructionWord'] = instruction_word
+            instruction_dict['functionalUnit'] = 'VectorADD'
+            instruction_dict['operands'] = [operands[1], operands[2]]
+            instruction_dict['destination'] = [operands[0]]
+            instruction_dict['cycles'] = self.config.parameters['pipelineDepthAdd'] + (self.VLR.Read(0)[0] // self.config.parameters['numLanes']) - 1
+            instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'vector']]
+        elif instruction_word.startswith('S') and instruction_word.endswith('VS'):
+            operands = self.get_operands(current_instruction)
+            instruction_dict['instructionWord'] = instruction_word
+            instruction_dict['functionalUnit'] = 'VectorADD'
+            instruction_dict['operands'] = [operands[1], operands[2]]
+            instruction_dict['destination'] = [operands[0]]
+            instruction_dict['cycles'] = self.config.parameters['pipelineDepthAdd'] + (self.VLR.Read(0)[0] // self.config.parameters['numLanes']) - 1
+            instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'scalar']]
+        elif "PACK" in instruction_word:
+            operands = self.get_operands(current_instruction)
+            instruction_dict['instructionWord'] = instruction_word
+            instruction_dict['functionalUnit'] = 'VectorSHUF'
+            instruction_dict['operands'] = [operands[1], operands[2]]
+            instruction_dict['destination'] = [operands[0]]
+            instruction_dict['cycles'] = self.config.parameters['pipelineDepthShuffle'] + (self.VLR.Read(0)[0] // self.config.parameters['numLanes']) - 1
+            instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'vector']]
+        elif instruction_word.startswith('LV') or instruction_word.startswith('SV'):
+            operands = self.get_operands(current_instruction)
+            instruction_dict['instructionWord'] = instruction_word
+            instruction_dict['functionalUnit'] = 'VectorLS'
+            instruction_dict['operands'] = [operands[1]]
+            instruction_dict['destination'] = [operands[0]]
+            instruction_dict['cycles'] = self.calculate_bank_cycles(operands[1])
+            instruction_dict['operand_with_type'] = [[operands[0], 'vector']]
+        else:
+            instruction_dict['instructionWord'] = instruction_word
+            instruction_dict['functionalUnit'] = 'ScalarU'
+            instruction_dict['operands'] = [operands[1]]
+            instruction_dict['destination'] = [operands[0]]
+            # TODO - Add memory bank calculated cycles here...
+            instruction_dict['cycles'] = 1
+            instruction_dict['operand_with_type'] = [[operands[0], 'vector']]
+        return instruction_dict
+    
+
+    def dispatch_to_queue(self, next_instruction: dict):
+        # Checking Vector Data Queue
+        if len(self.VDQ) < self.VDQ.max_length:
+            # Get the next decoded instruction
+            # Checking if the Vector Load/Store functional unit is available
+            if self.VectorLS.getStatus() == 'free':
+                # Now check if the operands are available
+                operand = next_instruction['operands'][0]
+                if self.VRFBB.getStatus(operand) == 'free':
+                    print("Pushing to Vector Data dispatch queue!") 
+                    self.VDQ.add(next_instruction)
+                    self.VRFBB.setBusy(operand)
+                else:
+                    print("Stalling the instruction, as operand is busy!")
+            else:
+                print("Stalling the instruction, as Vector Load/Store Unit is busy!")
+        else:
+            print("Vector Data Queue is full!")
+        
+        # Checking Vector Compute Queue
+        if len(self.VCQ) < self.VCQ.max_length:
+            # Get the next instruction from VCQ
+            # Get the instruction unit
+            if next_instruction['functionalUnit'] == 'VectorADD':
+                # Checking if the Vector ADD/SUB functional unit is available
+                if self.VectorADD.getStatus() == 'free':
+                    # Now getting the operands of the instruction
+                    operand1 = next_instruction['operands'][0]
+                    operand2 = next_instruction['operands'][1]
+                    destination = next_instruction['destination']
+                    # Checking if it is a Vector and Scalar operation
+                    if 'VS' in next_instruction['instructionWord']:
+                        # Checking if all the operands are available 
+                        if self.VRFBB.getStatus(operand1) == 'free' and self.SRFBB.getStatus(operand2) == 'free' and self.VRFBB.getStatus(destination) == 'free':
+                            print("Pushing to Vector Compute dispatch queue!") 
+                            self.VCQ.add(next_instruction)
+                            self.VRFBB.setBusy(operand1)
+                            self.SRFBB.setBusy(operand2)
+                            self.VRFBB.setBusy(destination)
+                        else:
+                            print("Stalling the instruction, as operands are busy!")
+                    else:
+                        # Checking if all the operands are available 
+                        if self.VRFBB.getStatus(operand1) == 'free' and self.VRFBB.getStatus(operand2) == 'free' and self.VRFBB.getStatus(destination) == 'free':
+                            print("Pushing to Vector Compute dispatch queue!") 
+                            self.VCQ.add(next_instruction)
+                            self.VRFBB.setBusy(operand1)
+                            self.VRFBB.setBusy(operand2)
+                            self.VRFBB.setBusy(destination)
+                        else:
+                            print("Stalling the instruction, as operands are busy!")
+                else:
+                    print("Stalling the instruction, as Vector ADD/SUB Unit is busy!")
+            elif next_instruction['functionalUnit'] == 'VectorMUL':
+                # Checking if the Vector MUL functional unit is available
+                if self.VectorMUL.getStatus() == 'free':
+                    # Now getting the operands of the instruction
+                    operand1 = next_instruction['operands'][0]
+                    operand2 = next_instruction['operands'][1]
+                    destination = next_instruction['destination']
+                    # Checking if it is a Vector and Scalar operation
+                    if 'VS' in next_instruction['instructionWord']:
+                        # Checking if all the operands are available 
+                        if self.VRFBB.getStatus(operand1) == 'free' and self.SRFBB.getStatus(operand2) == 'free' and self.VRFBB.getStatus(destination) == 'free':
+                            print("Pushing to Vector Compute dispatch queue!") 
+                            self.VCQ.add(next_instruction)
+                            self.VRFBB.setBusy(operand1)
+                            self.SRFBB.setBusy(operand2)
+                            self.VRFBB.setBusy(destination)
+                        else:
+                            print("Stalling the instruction, as operands are busy!")
+                    else:
+                        # Checking if all the operands are available 
+                        if self.VRFBB.getStatus(operand1) == 'free' and self.VRFBB.getStatus(operand2) == 'free' and self.VRFBB.getStatus(destination) == 'free':
+                            print("Pushing to Vector Compute dispatch queue!")
+                            self.VCQ.add(next_instruction)
+                            self.VRFBB.setBusy(operand1)
+                            self.VRFBB.setBusy(operand2)
+                            self.VRFBB.setBusy(destination)
+                        else:
+                            print("Stalling the instruction, as operands are busy!")
+                else:
+                    print("Stalling the instruction, as Vector MUL Unit is busy!")
+            elif next_instruction['functionalUnit'] == 'VectorDIV':
+                # Checking if the Vector DIV functional unit is available
+                if self.VectorDIV.getStatus() == 'free':
+                    # Now getting the operands of the instruction
+                    operand1 = next_instruction['operands'][0]
+                    operand2 = next_instruction['operands'][1]
+                    destination = next_instruction['destination']
+                    # Checking if it is a Vector and Scalar operation
+                    if 'VS' in next_instruction['instructionWord']:
+                        # Checking if all the operands are available 
+                        if self.VRFBB.getStatus(operand1) == 'free' and self.SRFBB.getStatus(operand2) == 'free' and self.VRFBB.getStatus(destination) == 'free':
+                            print("Pushing to Vector Compute dispatch queue!")
+                            self.VCQ.add(next_instruction)
+                            self.VRFBB.setBusy(operand1)
+                            self.SRFBB.setBusy(operand2)
+                            self.VRFBB.setBusy(destination)
+                        else:
+                            print("Stalling the instruction, as operands are busy!")
+                    else:
+                        # Checking if all the operands are available 
+                        if self.VRFBB.getStatus(operand1) == 'free' and self.VRFBB.getStatus(operand2) == 'free' and self.VRFBB.getStatus(destination) == 'free':
+                            print("Pushing to Vector Compute dispatch queue!")
+                            self.VCQ.add(next_instruction)
+                            self.VRFBB.setBusy(operand1)
+                            self.VRFBB.setBusy(operand2)
+                            self.VRFBB.setBusy(destination)
+                        else:
+                            print("Stalling the instruction, as operands are busy!")
+                else:
+                    print("Stalling the instruction, as Vector DIV Unit is busy!")
+            elif next_instruction['functionalUnit'] == 'VectorSHUF':
+                # Checking if the Vector Shuffle functional unit is available
+                if self.VectorSHUF.getStatus() == 'free':
+                    # Now getting the operands of the instruction
+                    operand1 = next_instruction['operands'][0]
+                    operand2 = next_instruction['operands'][1]
+                    destination = next_instruction['destination']
+                    # Checking if all the operands are available 
+                    if self.VRFBB.getStatus(operand1) == 'free' and self.VRFBB.getStatus(operand2) == 'free' and self.VRFBB.getStatus(destination) == 'free':
+                        print("Pushing to Vector Compute dispatch queue!")
+                        self.VCQ.add(next_instruction)
+                        self.VRFBB.setBusy(operand1)
+                        self.VRFBB.setBusy(operand2)
+                        self.VRFBB.setBusy(destination)
+                    else:
+                        print("Stalling the instruction, as operands are busy!")
+                else:
+                    print("Stalling the instruction, as Vector Shuffle Unit is busy!")
+            else:
+                print("ERROR - Invalid Functional Unit! Check code!")
+        else:
+            print("Vector Compute Queue is full!")
+        
+        # Checking Scalar Compute Queue
+        if len(self.SCQ) < self.SCQ.max_length:
+            # Get the next instruction from SCQ
+            # Checking if the Scalar functional unit is available
+            if self.ScalarU.getStatus() == 'free':
+                # Now getting the operands of the instruction
+                # TODO - CHECK FOR VARIABLE OPERAND LENGTHS HERE!
+                operand1 = next_instruction['operands'][0]
+                operand2 = next_instruction['operands'][1]
+                destination = next_instruction['destination']
+                # Checking if all the operands are available 
+                if self.SRFBB.getStatus(operand1) == 'free' and self.SRFBB.getStatus(operand2) == 'free' and self.SRFBB.getStatus(destination) == 'free':
+                    print("Pushing to execution:", next_instruction)
+                    self.SCQ.add(next_instruction)
+                    self.SRFBB.setBusy(operand1)
+                    self.SRFBB.setBusy(operand2)
+                    self.SRFBB.setBusy(destination)
+                else:
+                    print("Stalling the instruction, as operands are busy!")
+            else:
+                print("Stalling the instruction, as Scalar Unit is busy!")
+        else:
+            print("Scalar Compute Queue is full!")
+
+
     def run(self):
         # Printing current VMIPS configuration
         print("")
@@ -333,11 +642,19 @@ class Core():
 
         # Line Number to iterate through the code file
         line_number = 0
+        
+        # Current instruction is initialised as None
+        current_instruction = None
 
-        # Decode Stage List - list which holds all inflight instructions that are yet to be decoded and pushed to the queue
-        decode_stage = []
+        # Decoded Instructions List = list which holds all inflight instructions that are yet to be decoded and pushed to the queue
+        # All stalled instructions  are present here...
+        decoded_instructions = []
 
         while(True):
+
+            # TODO - Add halting conditing here.
+            
+
             # --- Executing Active Instructions ---
             # TODO - WRITE THIS CODE!
             if self.VectorLS.getStatus() == 'busy':
@@ -373,7 +690,7 @@ class Core():
 
             
             # --- Pop Instructions ---
-            # TODO - WRITE CODE TO JUST POP OFF THE QUEUES, AND SEND TO BACKEND
+            # TODO - ADD CODE TO SEND TO BACKEND FOR EXECUTION
             # Checking Vector Data Queue
             if len(self.VDQ) != 0:
                 # Get the next instruction from VDQ
@@ -440,221 +757,24 @@ class Core():
 
             # --- Decoding Instructions ---
             # TODO - CHANGE ALL THIS CODE!
-            instruction_word = str(current_instruction[0])
-            operands = current_instruction[1:]
-
-
-            if instruction_word == "HALT":
-                # --- EXECUTE : HALT --- 
-                break
-            elif instruction_word.startswith("LV") or instruction_word.startswith("SV"):
-                if len(self.VDQ) == self.VDQ.max_length:
-                    print("ERROR - VDQ IS FULL! Cannot fetch any more vector load/store instructions!")
-                    # reducing line number to re-fetch instruction, and check again if the queue is empty
-                    line_number -= 1
-                else:
-                    self.VDQ.add(current_instruction)
-            elif instruction_word.startswith("ADDV") or instruction_word.startswith("SUBV") or instruction_word.startswith("MULV") or instruction_word.startswith("DIVV"):
-                if len(self.VCQ) == self.VCQ.max_length:
-                    print("ERROR - VCQ IS FULL! Cannot fetch any more vector compute instructions!")
-                    # reducing line number to re-fetch instruction, and check again if the queue is empty
-                    line_number -= 1
-                else:
-                    self.VCQ.add(current_instruction)
-            elif "PACK" in instruction_word:
-                if len(self.VCQ) == self.VCQ.max_length:
-                    print("ERROR - VCQ IS FULL! Cannot fetch any more vector compute instructions!")
-                    # reducing line number to re-fetch instruction, and check again if the queue is empty
-                    line_number -= 1
-                else:
-                    self.VCQ.add(current_instruction)
-            else:
-                if len(self.SCQ) == self.SCQ.max_length:
-                    print("ERROR - SCQ IS FULL! Cannot fetch any more vector compute instructions!")
-                    # reducing line number to re-fetch instruction, and check again if the queue is empty
-                    line_number -= 1
-                else:
-                    self.SCQ.add(current_instruction)
-
+            if current_instruction != None:
+                instruction_dict = self.decode(current_instruction)
+                decoded_instructions.append(instruction_dict)
 
             # --- Dispatch to Queue ---
-            # Checking Vector Data Queue
-            if len(self.VDQ) < self.VDQ.max_length:
-                # Get the next decoded instruction
-                # TODO - Change this next_instruction code!
-                next_instruction = decode_stage[0]
-                # Checking if the Vector Load/Store functional unit is available
-                if self.VectorLS.getStatus() == 'free':
-                    # Now check if the operands are available
-                    operand = next_instruction['operands'][0]
-                    if self.VRFBB.getStatus(operand) == 'free':
-                        print("Pushing to Vector Data dispatch queue!") 
-                        self.VDQ.add(next_instruction)
-                        self.VRFBB.setBusy(operand)
-                    else:
-                        print("Stalling the instruction, as operand is busy!")
-                else:
-                    print("Stalling the instruction, as Vector Load/Store Unit is busy!")
-            else:
-                print("Vector Data Queue is full!")
-            
-            # Checking Vector Compute Queue
-            if len(self.VCQ) < self.VCQ.max_length:
-                # Get the next instruction from VCQ
-                # TODO - Change this next_instruction code!
-                next_instruction = decode_stage[0]
-                # Get the instruction unit
-                if next_instruction['functionalUnit'] == 'VectorADD':
-                    # Checking if the Vector ADD/SUB functional unit is available
-                    if self.VectorADD.getStatus() == 'free':
-                        # Now getting the operands of the instruction
-                        operand1 = next_instruction['operands'][0]
-                        operand2 = next_instruction['operands'][1]
-                        destination = next_instruction['destination']
-                        # Checking if it is a Vector and Scalar operation
-                        if 'VS' in next_instruction['instructionWord']:
-                            # Checking if all the operands are available 
-                            if self.VRFBB.getStatus(operand1) == 'free' and self.SRFBB.getStatus(operand2) == 'free' and self.VRFBB.getStatus(destination) == 'free':
-                                print("Pushing to Vector Compute dispatch queue!") 
-                                self.VCQ.add(next_instruction)
-                                self.VRFBB.setBusy(operand1)
-                                self.SRFBB.setBusy(operand2)
-                                self.VRFBB.setBusy(destination)
-                            else:
-                                print("Stalling the instruction, as operands are busy!")
-                        else:
-                            # Checking if all the operands are available 
-                            if self.VRFBB.getStatus(operand1) == 'free' and self.VRFBB.getStatus(operand2) == 'free' and self.VRFBB.getStatus(destination) == 'free':
-                                print("Pushing to Vector Compute dispatch queue!") 
-                                self.VCQ.add(next_instruction)
-                                self.VRFBB.setBusy(operand1)
-                                self.VRFBB.setBusy(operand2)
-                                self.VRFBB.setBusy(destination)
-                            else:
-                                print("Stalling the instruction, as operands are busy!")
-                    else:
-                        print("Stalling the instruction, as Vector ADD/SUB Unit is busy!")
-                elif next_instruction['functionalUnit'] == 'VectorMUL':
-                    # Checking if the Vector MUL functional unit is available
-                    if self.VectorMUL.getStatus() == 'free':
-                        # Now getting the operands of the instruction
-                        operand1 = next_instruction['operands'][0]
-                        operand2 = next_instruction['operands'][1]
-                        destination = next_instruction['destination']
-                        # Checking if it is a Vector and Scalar operation
-                        if 'VS' in next_instruction['instructionWord']:
-                            # Checking if all the operands are available 
-                            if self.VRFBB.getStatus(operand1) == 'free' and self.SRFBB.getStatus(operand2) == 'free' and self.VRFBB.getStatus(destination) == 'free':
-                                print("Pushing to Vector Compute dispatch queue!") 
-                                self.VCQ.add(next_instruction)
-                                self.VRFBB.setBusy(operand1)
-                                self.SRFBB.setBusy(operand2)
-                                self.VRFBB.setBusy(destination)
-                            else:
-                                print("Stalling the instruction, as operands are busy!")
-                        else:
-                            # Checking if all the operands are available 
-                            if self.VRFBB.getStatus(operand1) == 'free' and self.VRFBB.getStatus(operand2) == 'free' and self.VRFBB.getStatus(destination) == 'free':
-                                print("Pushing to Vector Compute dispatch queue!")
-                                self.VCQ.add(next_instruction)
-                                self.VRFBB.setBusy(operand1)
-                                self.VRFBB.setBusy(operand2)
-                                self.VRFBB.setBusy(destination)
-                            else:
-                                print("Stalling the instruction, as operands are busy!")
-                    else:
-                        print("Stalling the instruction, as Vector MUL Unit is busy!")
-                elif next_instruction['functionalUnit'] == 'VectorDIV':
-                    # Checking if the Vector DIV functional unit is available
-                    if self.VectorDIV.getStatus() == 'free':
-                        # Now getting the operands of the instruction
-                        operand1 = next_instruction['operands'][0]
-                        operand2 = next_instruction['operands'][1]
-                        destination = next_instruction['destination']
-                        # Checking if it is a Vector and Scalar operation
-                        if 'VS' in next_instruction['instructionWord']:
-                            # Checking if all the operands are available 
-                            if self.VRFBB.getStatus(operand1) == 'free' and self.SRFBB.getStatus(operand2) == 'free' and self.VRFBB.getStatus(destination) == 'free':
-                                print("Pushing to Vector Compute dispatch queue!")
-                                self.VCQ.add(next_instruction)
-                                self.VRFBB.setBusy(operand1)
-                                self.SRFBB.setBusy(operand2)
-                                self.VRFBB.setBusy(destination)
-                            else:
-                                print("Stalling the instruction, as operands are busy!")
-                        else:
-                            # Checking if all the operands are available 
-                            if self.VRFBB.getStatus(operand1) == 'free' and self.VRFBB.getStatus(operand2) == 'free' and self.VRFBB.getStatus(destination) == 'free':
-                                print("Pushing to Vector Compute dispatch queue!")
-                                self.VCQ.add(next_instruction)
-                                self.VRFBB.setBusy(operand1)
-                                self.VRFBB.setBusy(operand2)
-                                self.VRFBB.setBusy(destination)
-                            else:
-                                print("Stalling the instruction, as operands are busy!")
-                    else:
-                        print("Stalling the instruction, as Vector DIV Unit is busy!")
-                elif next_instruction['functionalUnit'] == 'VectorSHUF':
-                    # Checking if the Vector Shuffle functional unit is available
-                    if self.VectorSHUF.getStatus() == 'free':
-                        # Now getting the operands of the instruction
-                        operand1 = next_instruction['operands'][0]
-                        operand2 = next_instruction['operands'][1]
-                        destination = next_instruction['destination']
-                        # Checking if all the operands are available 
-                        if self.VRFBB.getStatus(operand1) == 'free' and self.VRFBB.getStatus(operand2) == 'free' and self.VRFBB.getStatus(destination) == 'free':
-                            print("Pushing to Vector Compute dispatch queue!")
-                            self.VCQ.add(next_instruction)
-                            self.VRFBB.setBusy(operand1)
-                            self.VRFBB.setBusy(operand2)
-                            self.VRFBB.setBusy(destination)
-                        else:
-                            print("Stalling the instruction, as operands are busy!")
-                    else:
-                        print("Stalling the instruction, as Vector Shuffle Unit is busy!")
-                else:
-                    print("ERROR - Invalid Functional Unit! Check code!")
-            else:
-                print("Vector Compute Queue is full!")
-            
-            # Checking Scalar Compute Queue
-            if len(self.SCQ) < self.SCQ.max_length:
-                # Get the next instruction from SCQ
-                # TODO - Change this next_instruction code!
-                next_instruction = decode_stage[0]
-                # Checking if the Scalar functional unit is available
-                if self.ScalarU.getStatus() == 'free':
-                    # Now getting the operands of the instruction
-                    # TODO - CHECK FOR VARIABLE OPERAND LENGTHS HERE!
-                    operand1 = next_instruction['operands'][0]
-                    operand2 = next_instruction['operands'][1]
-                    destination = next_instruction['destination']
-                    # Checking if all the operands are available 
-                    if self.SRFBB.getStatus(operand1) == 'free' and self.SRFBB.getStatus(operand2) == 'free' and self.SRFBB.getStatus(destination) == 'free':
-                        print("Pushing to execution:", next_instruction)
-                        self.SCQ.add(next_instruction)
-                        self.SRFBB.setBusy(operand1)
-                        self.SRFBB.setBusy(operand2)
-                        self.SRFBB.setBusy(destination)
-                    else:
-                        print("Stalling the instruction, as operands are busy!")
-                else:
-                    print("Stalling the instruction, as Scalar Unit is busy!")
-            else:
-                print("Scalar Compute Queue is full!")
-
-            
+            if len(decoded_instructions) != 0:
+                for instruction in decoded_instructions:
+                    self.dispatch_to_queue(instruction)
 
             # --- Fetching Instructions ---
-            # TODO - CHANGE ALL THIS CODE!
-            current_instruction = self.imem.Read(line_number)
-            current_instruction = current_instruction.split(" ")
-            decode_stage.append(current_instruction)
+            # TODO - VERIFY ALL THIS CODE!
+            line = self.imem.Read(line_number)
+            current_instruction = line.split(" ")
             
             print("Fetched Instruction :", current_instruction)
             print("")
             
-            line_number += 1    
+            line_number += 1
             self.cycle += 1
         
         print("------------------------------")
