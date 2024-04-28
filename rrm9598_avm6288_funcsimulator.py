@@ -690,6 +690,7 @@ class Core():
                 value = value[0]
                 if value <= self.RFs["VRF"].vec_length:
                     self.SRs["VL"].Write(0, [value])
+                    current_instruction_print.append('[' + str(value) + ']')
                     # print("Updated VL Value  : ", self.SRs["VL"].Read(0)[0])
                 else:
                     print("WARNING: Invalid Value for Vector Length Register, debug code!")
