@@ -215,6 +215,23 @@ class BusyBoard():
             print("ERROR - Invalid index access in the busy board!")
             return None
 
+class FU(BusyBoard):
+    def __init__(self):
+        super().__init__(1)
+        self.cycles = 0
+        self.instr = None
+
+    def addInstr(self, instr):
+        self.instr = instr
+        self.cycles = instr["clock"]
+    
+    def decrement(self):
+        self.cycles -= 1
+        if self.cycles == 0:
+            self.clearStatus()
+            return True
+        return False
+    # def is
 # TODO - Check if you can create classes for Frontend and Backend
 
 class Core():
@@ -244,12 +261,70 @@ class Core():
         self.VRFBB = BusyBoard(self.RFs["VRF"].reg_count)
         
         # Functional Unit Busy Boards
-        self.VectorLS = BusyBoard(1)
-        self.VectorADD = BusyBoard(1)
-        self.VectorMUL = BusyBoard(1)
-        self.VectorDIV = BusyBoard(1)
-        self.VectorSHUF = BusyBoard(1)
-        self.ScalarU = BusyBoard(1)
+        self.VectorLS = FU()
+        self.VectorADD = FU()
+        self.VectorMUL = FU()
+        self.VectorDIV = FU()
+        self.VectorSHUF = FU()
+        self.ScalarU = FU()
+    
+    def calculate_bank_cycles(self, addresses):
+        # Takes in addersses, return n_cycles
+        
+        n_cycles = self.config.parameters["vlsPipelineDepth"]  # Initial pipeline depth
+        n_banks = self.config.parameters["vdmNumBanks"]
+        n_lanes = 1
+
+        banks = [0 for _ in range(n_banks)]
+        # print("Banks:", n_banks, "Lanes:", n_lanes)
+        addrs = []
+        for i in range((len(addresses) // n_lanes) + 1):
+            start_idx = i*n_lanes
+            end_idx   = (i+1)*n_lanes
+
+            addrs.append(
+                addresses[start_idx:end_idx]
+            )
+        # print("Addrs:", addrs)
+        # addrs = [[addresses to issue at cycle 1], [addresses to issue at cycle 2]]
+
+        for adrs in addrs:
+            # adrs = [0, 1, 2, 3]
+            # print("Loading addresses:", adrs)
+            for adr in adrs:
+                if banks[adr % n_banks] != 0:   # Bank [adr % n_bank] is busy?
+                    # print("Hit:", adr)
+                    banks[adr % n_banks] += 1   # Add 1 cycle to resolve conflict
+                banks[adr % n_banks] += self.config.parameters["vdmBankBusyTime"] # Add however many cycles are required in general to finish load/store
+            # print(banks)
+            # Reduce remaining cycles for each bank
+            for i in range(n_banks):
+                if banks[i] > 0:
+                    banks[i] -= 1
+            n_cycles += 1
+            # print(banks)
+        
+        # If anything is left in bank busy, then add it to n_banks
+        return n_cycles + max(banks)
+    
+    def execute(self):
+        # instr has FU
+        FUs = [self.VectorLS, self.VectorADD, self.VectorDIV, self.VectorMUL, self.VectorSHUF, self.ScalarU]
+
+        for fu in FUs:
+            if fu.getStatus() == "busy":
+                clear_operands = fu.decrement()
+
+                if clear_operands:
+                    operands = fu.instr["operand_with_type"]
+                    for (idx, _type) in operands:
+                        if _type == "scalar":
+                            self.SRFBB.clearStatus(idx)
+                        if _type == "vector":
+                            self.VRFBB.clearStatus(idx)
+        
+                        
+
     
     def run(self):
         # Printing current VMIPS configuration
