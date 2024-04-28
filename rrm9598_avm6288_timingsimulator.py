@@ -160,7 +160,7 @@ class Queue():
         self.max_length = max_length
     
     def add(self, item):
-        if (len(self.queue) < self.max_length):
+        if len(self.queue) < self.max_length:
             self.queue.append(item)
             return True
         else:
@@ -168,12 +168,20 @@ class Queue():
             return False
         
     def pop(self):
-        if (len(self.queue) > 0):
+        if len(self.queue) > 0:
             item = self.queue[0]
             self.queue = self.queue[1:]
             return item
         else:
             print("ERROR - Queue is empty!")
+            return None
+    
+    def getNextInQueue(self):
+        if len(self.queue) > 0:
+            item = self.queue[0]
+            return item
+        else:
+            print("WARNING - Queue is empty!")
             return None
         
     def __str__(self):
@@ -186,29 +194,36 @@ class Queue():
 class BusyBoard():
     def __init__(self, length: int):
         self.length = length
-        self.register_statuses = [0 for _ in range(self.length)]
+        self.register_statuses = ['free' for _ in range(self.length)]
 
-    def setBusy(self, idx: int):
+    def setBusy(self, idx = 0):
         if idx < self.length:
-            self.register_statuses[idx] = 1
+            self.register_statuses[idx] = 'busy'
         else:
             print("ERROR - Invalid index access in the busy board!")
     
-    def clearStatus(self, idx: int):
+    def clearStatus(self, idx = 0):
         if idx < self.length:
-            self.register_statuses[idx] = 0
+            self.register_statuses[idx] = 'free'
         else:
             print("ERROR - Invalid index access in the busy board!")
 
-    def getStatus(self, idx: int):
+    def getStatus(self, idx = 0):
         if idx < self.length:
             return self.register_statuses[idx]
         else:
             print("ERROR - Invalid index access in the busy board!")
             return None
 
+# TODO - Check if you can create classes for Frontend and Backend
+
 class Core():
     def __init__(self, imem: IMEM, sdmem: DMEM, vdmem: DMEM, config: Config):
+        self.imem = imem
+        self.sdmem = sdmem
+        self.vdmem = vdmem
+        self.config = config
+        
         # cycle counter
         self.cycle = 0
 
@@ -220,33 +235,210 @@ class Core():
         self.VLR.Write(0, [self.RFs["VRF"].vec_length])
         
         # Initializing Vector Data Queue, Vector Compute Queue, Scalar Compute Queue
-        self.VDQ = Queue(config.parameters["dataQueueDepth"])
-        self.VCQ = Queue(config.parameters["computeQueueDepth"])
-        self.SCQ = Queue(config.parameters["computeQueueDepth"])
+        self.VDQ = Queue(self.config.parameters["dataQueueDepth"])
+        self.VCQ = Queue(self.config.parameters["computeQueueDepth"])
+        self.SCQ = Queue(self.config.parameters["computeQueueDepth"])
 
+        # Vector Register File Busy Boards
         self.SRFBB = BusyBoard(self.RFs["SRF"].reg_count)
         self.VRFBB = BusyBoard(self.RFs["VRF"].reg_count)
         
+        # Functional Unit Busy Boards
+        self.VectorLS = BusyBoard(1)
+        self.VectorADD = BusyBoard(1)
+        self.VectorMUL = BusyBoard(1)
+        self.VectorDIV = BusyBoard(1)
+        self.VectorSHUF = BusyBoard(1)
+        self.ScalarU = BusyBoard(1)
+    
     def run(self):
         # Printing current VMIPS configuration
         print("")
-        config.printConfig()
+        self.config.printConfig()
 
         # Line Number to iterate through the code file
         line_number = 0
 
         while(True):
-            # --- FETCH Stage ---
-            current_instruction = imem.Read(line_number)
-            current_instruction = current_instruction.split(" ")
+            # --- Executing Active Instructions ---
+            # TODO - WRITE THIS CODE!
 
-            line_number += 1
-            self.cycle += 1
+            # --- Pop Instructions ---
+            # Checking Vector Data Queue
+            if len(self.VDQ) != 0:
+                # Get the next instruction from VDQ
+                next_instruction = self.VDQ.getNextInQueue()
+                # Checking if the Vector Load/Store functional unit is available
+                if self.VectorLS.getStatus() == 'free':
+                    # Now check if the operands are available
+                    operand = next_instruction['operands'][0]
+                    if self.VRFBB.getStatus(operand) == 'free':
+                        print("Pushing to execution:", next_instruction)
+                        self.VDQ.pop()
+                        self.VectorLS.setBusy()
+                        self.VRFBB.setBusy(operand)
+                    else:
+                        print("Stalling the instruction, as operand is busy!")
+                else:
+                    print("Stalling the instruction, as Vector Load/Store Unit is busy!")
+            else:
+                print("No instructions in Vector Data Queue!")
+            
+            # Checking Vector Compute Queue
+            if len(self.VCQ) != 0:
+                # Get the next instruction from VCQ
+                next_instruction = self.VCQ.getNextInQueue()
+                # Get the instruction unit
+                if next_instruction['functionalUnit'] == 'VectorADD':
+                    # Checking if the Vector ADD/SUB functional unit is available
+                    if self.VectorADD.getStatus() == 'free':
+                        # Now getting the operands of the instruction
+                        operand1 = next_instruction['operands'][0]
+                        operand2 = next_instruction['operands'][1]
+                        destination = next_instruction['destination']
+                        # Checking if it is a Vector and Scalar operation
+                        if 'VS' in next_instruction['instructionWord']:
+                            # Checking if all the operands are available 
+                            if self.VRFBB.getStatus(operand1) == 'free' and self.SRFBB.getStatus(operand2) == 'free' and self.VRFBB.getStatus(destination) == 'free':
+                                print("Pushing to execution:", next_instruction)
+                                self.VCQ.pop()
+                                self.VectorADD.setBusy()
+                                self.VRFBB.setBusy(operand1)
+                                self.SRFBB.setBusy(operand2)
+                                self.VRFBB.setBusy(destination)
+                            else:
+                                print("Stalling the instruction, as operands are busy!")
+                        else:
+                            # Checking if all the operands are available 
+                            if self.VRFBB.getStatus(operand1) == 'free' and self.VRFBB.getStatus(operand2) == 'free' and self.VRFBB.getStatus(destination) == 'free':
+                                print("Pushing to execution:", next_instruction)
+                                self.VCQ.pop()
+                                self.VectorADD.setBusy()
+                                self.VRFBB.setBusy(operand1)
+                                self.VRFBB.setBusy(operand2)
+                                self.VRFBB.setBusy(destination)
+                            else:
+                                print("Stalling the instruction, as operands are busy!")
+                    else:
+                        print("Stalling the instruction, as Vector ADD/SUB Unit is busy!")
+                elif next_instruction['functionalUnit'] == 'VectorMUL':
+                    # Checking if the Vector MUL functional unit is available
+                    if self.VectorMUL.getStatus() == 'free':
+                        # Now getting the operands of the instruction
+                        operand1 = next_instruction['operands'][0]
+                        operand2 = next_instruction['operands'][1]
+                        destination = next_instruction['destination']
+                        # Checking if it is a Vector and Scalar operation
+                        if 'VS' in next_instruction['instructionWord']:
+                            # Checking if all the operands are available 
+                            if self.VRFBB.getStatus(operand1) == 'free' and self.SRFBB.getStatus(operand2) == 'free' and self.VRFBB.getStatus(destination) == 'free':
+                                print("Pushing to execution:", next_instruction)
+                                self.VCQ.pop()
+                                self.VectorMUL.setBusy()
+                                self.VRFBB.setBusy(operand1)
+                                self.SRFBB.setBusy(operand2)
+                                self.VRFBB.setBusy(destination)
+                            else:
+                                print("Stalling the instruction, as operands are busy!")
+                        else:
+                            # Checking if all the operands are available 
+                            if self.VRFBB.getStatus(operand1) == 'free' and self.VRFBB.getStatus(operand2) == 'free' and self.VRFBB.getStatus(destination) == 'free':
+                                print("Pushing to execution:", next_instruction)
+                                self.VCQ.pop()
+                                self.VectorMUL.setBusy()
+                                self.VRFBB.setBusy(operand1)
+                                self.VRFBB.setBusy(operand2)
+                                self.VRFBB.setBusy(destination)
+                            else:
+                                print("Stalling the instruction, as operands are busy!")
+                    else:
+                        print("Stalling the instruction, as Vector MUL Unit is busy!")
+                elif next_instruction['functionalUnit'] == 'VectorDIV':
+                    # Checking if the Vector DIV functional unit is available
+                    if self.VectorDIV.getStatus() == 'free':
+                        # Now getting the operands of the instruction
+                        operand1 = next_instruction['operands'][0]
+                        operand2 = next_instruction['operands'][1]
+                        destination = next_instruction['destination']
+                        # Checking if it is a Vector and Scalar operation
+                        if 'VS' in next_instruction['instructionWord']:
+                            # Checking if all the operands are available 
+                            if self.VRFBB.getStatus(operand1) == 'free' and self.SRFBB.getStatus(operand2) == 'free' and self.VRFBB.getStatus(destination) == 'free':
+                                print("Pushing to execution:", next_instruction)
+                                self.VCQ.pop()
+                                self.VectorDIV.setBusy()
+                                self.VRFBB.setBusy(operand1)
+                                self.SRFBB.setBusy(operand2)
+                                self.VRFBB.setBusy(destination)
+                            else:
+                                print("Stalling the instruction, as operands are busy!")
+                        else:
+                            # Checking if all the operands are available 
+                            if self.VRFBB.getStatus(operand1) == 'free' and self.VRFBB.getStatus(operand2) == 'free' and self.VRFBB.getStatus(destination) == 'free':
+                                print("Pushing to execution:", next_instruction)
+                                self.VCQ.pop()
+                                self.VectorDIV.setBusy()
+                                self.VRFBB.setBusy(operand1)
+                                self.VRFBB.setBusy(operand2)
+                                self.VRFBB.setBusy(destination)
+                            else:
+                                print("Stalling the instruction, as operands are busy!")
+                    else:
+                        print("Stalling the instruction, as Vector DIV Unit is busy!")
+                elif next_instruction['functionalUnit'] == 'VectorSHUF':
+                    # Checking if the Vector Shuffle functional unit is available
+                    if self.VectorSHUF.getStatus() == 'free':
+                        # Now getting the operands of the instruction
+                        operand1 = next_instruction['operands'][0]
+                        operand2 = next_instruction['operands'][1]
+                        destination = next_instruction['destination']
+                        # Checking if all the operands are available 
+                        if self.VRFBB.getStatus(operand1) == 'free' and self.VRFBB.getStatus(operand2) == 'free' and self.VRFBB.getStatus(destination) == 'free':
+                            print("Pushing to execution:", next_instruction)
+                            self.VCQ.pop()
+                            self.VectorSHUF.setBusy()
+                            self.VRFBB.setBusy(operand1)
+                            self.VRFBB.setBusy(operand2)
+                            self.VRFBB.setBusy(destination)
+                        else:
+                            print("Stalling the instruction, as operands are busy!")
+                    else:
+                        print("Stalling the instruction, as Vector Shuffle Unit is busy!")
+                else:
+                    print("ERROR - Invalid Functional Unit! Check code!")
+            else:
+                print("No instructions in Vector Compute Queue!")
+            
+            if len(self.SCQ) != 0:
+                # Get the next instruction from SCQ
+                next_instruction = self.SCQ.getNextInQueue()
+                # Checking if the Scalar functional unit is available
+                if self.ScalarU.getStatus() == 'free':
+                    # Now getting the operands of the instruction
+                    # TODO - CHECK FOR VARIABLE OPERAND LENGTHS HERE!
+                    operand1 = next_instruction['operands'][0]
+                    operand2 = next_instruction['operands'][1]
+                    destination = next_instruction['destination']
+                    # Checking if all the operands are available 
+                    if self.SRFBB.getStatus(operand1) == 'free' and self.SRFBB.getStatus(operand2) == 'free' and self.SRFBB.getStatus(destination) == 'free':
+                        print("Pushing to execution:", next_instruction)
+                        self.SCQ.pop()
+                        self.ScalarU.setBusy()
+                        self.SRFBB.setBusy(operand1)
+                        self.SRFBB.setBusy(operand2)
+                        self.SRFBB.setBusy(destination)
+                    else:
+                        print("Stalling the instruction, as operands are busy!")
+                else:
+                    print("Stalling the instruction, as Scalar Unit is busy!")
+            else:
+                print("No instructions in Scalar Compute Queue!")
 
-            print("Current Instruction :", current_instruction)
-            print("")
+            # --- Dispatch to Queue ---
+            # TODO - WRITE THIS CODE!
 
-            # --- DECODE Stage ---
+            # --- Decoding Instructions ---
+            # TODO - CHANGE ALL THIS CODE!
             instruction_word = str(current_instruction[0])
             self.cycle += 1
 
@@ -282,6 +474,16 @@ class Core():
                 else:
                     self.SCQ.add(current_instruction)
 
+            # --- Fetching Instructions ---
+            # TODO - CHANGE ALL THIS CODE!
+            current_instruction = self.imem.Read(line_number)
+            current_instruction = current_instruction.split(" ")
+
+            line_number += 1
+            self.cycle += 1
+
+            print("Current Instruction :", current_instruction)
+            print("")
         
         print("------------------------------")
         print(" Total Cycles: ", self.cycle)
