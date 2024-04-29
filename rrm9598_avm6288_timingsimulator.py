@@ -268,6 +268,10 @@ class Core():
         self.VectorSHUF = FU()
         self.ScalarU = FU()
 
+        self.IF_HALT = False
+        self.ID_HALT = False
+        self.EX_HALT = False
+
     
     def get_operands(self, instruction: list):
         if len(instruction) == 4:
@@ -476,7 +480,7 @@ class Core():
 
     def dispatch_to_queue(self, next_instruction: dict):
         # Checking Vector Data Queue
-        if len(self.VDQ) < self.VDQ.max_length:
+        if len(self.VDQ) < self.VDQ.max_length and next_instruction['functionalUnit'] == 'VectorLS':
             # Get the next decoded instruction
             # Checking if the Vector Load/Store functional unit is available
             if self.VectorLS.getStatus() == 'free':
@@ -486,6 +490,7 @@ class Core():
                     print("Pushing to Vector Data dispatch queue!") 
                     self.VDQ.add(next_instruction)
                     self.VRFBB.setBusy(operand)
+                    return True
                 else:
                     print("Stalling the instruction, as operand is busy!")
             else:
@@ -513,6 +518,7 @@ class Core():
                             self.VRFBB.setBusy(operand1)
                             self.SRFBB.setBusy(operand2)
                             self.VRFBB.setBusy(destination)
+                            return True
                         else:
                             print("Stalling the instruction, as operands are busy!")
                     else:
@@ -523,6 +529,7 @@ class Core():
                             self.VRFBB.setBusy(operand1)
                             self.VRFBB.setBusy(operand2)
                             self.VRFBB.setBusy(destination)
+                            return True
                         else:
                             print("Stalling the instruction, as operands are busy!")
                 else:
@@ -543,6 +550,7 @@ class Core():
                             self.VRFBB.setBusy(operand1)
                             self.SRFBB.setBusy(operand2)
                             self.VRFBB.setBusy(destination)
+                            return True
                         else:
                             print("Stalling the instruction, as operands are busy!")
                     else:
@@ -553,6 +561,7 @@ class Core():
                             self.VRFBB.setBusy(operand1)
                             self.VRFBB.setBusy(operand2)
                             self.VRFBB.setBusy(destination)
+                            return True
                         else:
                             print("Stalling the instruction, as operands are busy!")
                 else:
@@ -573,6 +582,7 @@ class Core():
                             self.VRFBB.setBusy(operand1)
                             self.SRFBB.setBusy(operand2)
                             self.VRFBB.setBusy(destination)
+                            return True
                         else:
                             print("Stalling the instruction, as operands are busy!")
                     else:
@@ -583,6 +593,7 @@ class Core():
                             self.VRFBB.setBusy(operand1)
                             self.VRFBB.setBusy(operand2)
                             self.VRFBB.setBusy(destination)
+                            return True
                         else:
                             print("Stalling the instruction, as operands are busy!")
                 else:
@@ -601,6 +612,7 @@ class Core():
                         self.VRFBB.setBusy(operand1)
                         self.VRFBB.setBusy(operand2)
                         self.VRFBB.setBusy(destination)
+                        return True
                     else:
                         print("Stalling the instruction, as operands are busy!")
                 else:
@@ -627,13 +639,14 @@ class Core():
                     self.SRFBB.setBusy(operand1)
                     self.SRFBB.setBusy(operand2)
                     self.SRFBB.setBusy(destination)
+                    return True
                 else:
                     print("Stalling the instruction, as operands are busy!")
             else:
                 print("Stalling the instruction, as Scalar Unit is busy!")
         else:
             print("Scalar Compute Queue is full!")
-
+        return False
     def pop_from_queues(self):
         Qs = [self.VDQ, self.VCQ, self.SCQ]
         _mapping = {
@@ -668,20 +681,38 @@ class Core():
 
         # Index to iterate through the code file
         instr_idx = 0
-
+        instr = None
         # Decode Stage List - list which holds all inflight instructions that are yet to be decoded and pushed to the queue
         # decode_stage = []
-
+        dispatch_success = True
         while(True):
+
             self.execute()
 
-            decoded_instr = self.decode(instr)
-            self.dispatch_to_queue(decoded_instr)
+
+
+            if not self.ID_HALT and instr:
+                decoded_instr = self.decode(instr)
+                if instr[0] == "HALT":
+                    self.ID_HALT = True
+                    continue # Don't dispatch halt to queue?
+                dispatch_success = self.dispatch_to_queue(decoded_instr)
+            # If HALT has been reached, then all previous instrs have been successfully decoded and dispatched
+
+
+            # Pop regardless of decode/dispatch
             self.pop_from_queues()
             
-            instr = self.fetch(instr_idx)
+            if not self.IF_HALT:
+                instr = self.fetch(instr_idx)
+                if instr[0] == "HALT":
+                    self.IF_HALT = True
+                if dispatch_success:
+                    instr_idx += 1
 
-            instr_idx += 1    
+            # self.IF_NOP = instr[0] == "HALT"
+
+
             self.cycle += 1
         
         print("------------------------------")
