@@ -223,7 +223,7 @@ class FU(BusyBoard):
 
     def addInstr(self, instr):
         self.instr = instr
-        self.cycles = instr["clock"]
+        self.cycles = instr["cycles"]
     
     def decrement(self):
         self.cycles -= 1
@@ -498,7 +498,7 @@ class Core():
                 if fu.getStatus() == 'free':
                     q.add(instr)
                     # Busy Board handling
-                    operands = fu.instr["operand_with_type"]
+                    operands = instr["operand_with_type"]
                     for (operand, _type) in operands:
                         if _type == "scalar":
                             bb = self.SRFBB
