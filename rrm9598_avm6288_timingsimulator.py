@@ -216,14 +216,16 @@ class BusyBoard():
             return None
 
 class FU(BusyBoard):
-    def __init__(self):
+    def __init__(self, name):
         super().__init__(1)
         self.cycles = 0
         self.instr = None
-
+        self.name = name
     def addInstr(self, instr):
         self.instr = instr
         self.cycles = instr["cycles"]
+        self.setBusy()
+
     
     def decrement(self):
         self.cycles -= 1
@@ -231,6 +233,9 @@ class FU(BusyBoard):
             self.clearStatus()
             return True
         return False
+    
+    def __str__(self):
+        return self.name
     
 # TODO - Check if you can create classes for Frontend and Backend
 
@@ -261,12 +266,12 @@ class Core():
         self.VRFBB = BusyBoard(self.RFs["VRF"].reg_count)
         
         # Functional Unit Busy Boards
-        self.VectorLS = FU()
-        self.VectorADD = FU()
-        self.VectorMUL = FU()
-        self.VectorDIV = FU()
-        self.VectorSHUF = FU()
-        self.ScalarU = FU()
+        self.VectorLS = FU("VectorLS")
+        self.VectorADD = FU("VectorADD")
+        self.VectorMUL = FU("VectorMUL")
+        self.VectorDIV = FU("VectorDIV")
+        self.VectorSHUF = FU("VectorSHUF")
+        self.ScalarU = FU("ScalarU")
 
         self.IF_HALT = False
         self.ID_HALT = False
@@ -354,6 +359,7 @@ class Core():
 
         for fu in FUs:
             if fu.getStatus() == "busy":
+                # print("FU {} is busy {}".format(fu, fu.cycles))
                 clear_operands = fu.decrement()
 
                 if clear_operands:
@@ -508,7 +514,8 @@ class Core():
         while(True):
             
             self.execute()
-
+            # if self.cycle > 78:
+            #     break
 
 
             if not self.ID_HALT and instr:
