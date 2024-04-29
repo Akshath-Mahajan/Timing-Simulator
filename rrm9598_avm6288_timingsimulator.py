@@ -375,9 +375,9 @@ class Core():
 
         instruction_dict = dict()
         instruction_word = str(current_instruction[0])
+        instruction_dict['instructionWord'] = instruction_word
                 
         if instruction_word == 'HALT':
-            instruction_dict['instructionWord'] = instruction_word
             instruction_dict['functionalUnit'] = 'ScalarU'
             instruction_dict['operands'] = None
             instruction_dict['destination'] = None
@@ -385,7 +385,6 @@ class Core():
             instruction_dict['operand_with_type'] = []
         elif instruction_word == 'ADDVV' or instruction_word == 'SUBVV':
             operands = self.get_operands(current_instruction)
-            instruction_dict['instructionWord'] = instruction_word
             instruction_dict['functionalUnit'] = 'VectorADD'
             instruction_dict['operands'] = [operands[1], operands[2]]
             instruction_dict['destination'] = [operands[0]]
@@ -393,7 +392,6 @@ class Core():
             instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'vector']]
         elif instruction_word == 'ADDVS' or instruction_word == 'SUBVS':
             operands = self.get_operands(current_instruction)
-            instruction_dict['instructionWord'] = instruction_word
             instruction_dict['functionalUnit'] = 'VectorADD'
             instruction_dict['operands'] = [operands[1], operands[2]]
             instruction_dict['destination'] = [operands[0]]
@@ -401,7 +399,6 @@ class Core():
             instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'scalar']]
         elif instruction_word == 'MULVV':
             operands = self.get_operands(current_instruction)
-            instruction_dict['instructionWord'] = instruction_word
             instruction_dict['functionalUnit'] = 'VectorMUL'
             instruction_dict['operands'] = [operands[1], operands[2]]
             instruction_dict['destination'] = [operands[0]]
@@ -409,7 +406,6 @@ class Core():
             instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'vector']]
         elif instruction_word == 'MULVS':
             operands = self.get_operands(current_instruction)
-            instruction_dict['instructionWord'] = instruction_word
             instruction_dict['functionalUnit'] = 'VectorMUL'
             instruction_dict['operands'] = [operands[1], operands[2]]
             instruction_dict['destination'] = [operands[0]]
@@ -417,7 +413,6 @@ class Core():
             instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'scalar']]
         elif instruction_word == 'DIVVV':
             operands = self.get_operands(current_instruction)
-            instruction_dict['instructionWord'] = instruction_word
             instruction_dict['functionalUnit'] = 'VectorDIV'
             instruction_dict['operands'] = [operands[1], operands[2]]
             instruction_dict['destination'] = [operands[0]]
@@ -425,7 +420,6 @@ class Core():
             instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'vector']]
         elif instruction_word == 'DIVVS':
             operands = self.get_operands(current_instruction)
-            instruction_dict['instructionWord'] = instruction_word
             instruction_dict['functionalUnit'] = 'VectorDIV'
             instruction_dict['operands'] = [operands[1], operands[2]]
             instruction_dict['destination'] = [operands[0]]
@@ -433,7 +427,6 @@ class Core():
             instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'scalar']]
         elif instruction_word.startswith('S') and instruction_word.endswith('VV'):
             operands = self.get_operands(current_instruction)
-            instruction_dict['instructionWord'] = instruction_word
             instruction_dict['functionalUnit'] = 'VectorADD'
             instruction_dict['operands'] = [operands[1], operands[2]]
             instruction_dict['destination'] = [operands[0]]
@@ -441,7 +434,6 @@ class Core():
             instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'vector']]
         elif instruction_word.startswith('S') and instruction_word.endswith('VS'):
             operands = self.get_operands(current_instruction)
-            instruction_dict['instructionWord'] = instruction_word
             instruction_dict['functionalUnit'] = 'VectorADD'
             instruction_dict['operands'] = [operands[1], operands[2]]
             instruction_dict['destination'] = [operands[0]]
@@ -449,7 +441,6 @@ class Core():
             instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'scalar']]
         elif "PACK" in instruction_word:
             operands = self.get_operands(current_instruction)
-            instruction_dict['instructionWord'] = instruction_word
             instruction_dict['functionalUnit'] = 'VectorSHUF'
             instruction_dict['operands'] = [operands[1], operands[2]]
             instruction_dict['destination'] = [operands[0]]
@@ -457,14 +448,12 @@ class Core():
             instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'vector']]
         elif instruction_word.startswith('LV') or instruction_word.startswith('SV'):
             operands = self.get_operands(current_instruction)
-            instruction_dict['instructionWord'] = instruction_word
             instruction_dict['functionalUnit'] = 'VectorLS'
             instruction_dict['operands'] = [operands[1]]
             instruction_dict['destination'] = [operands[0]]
             instruction_dict['cycles'] = self.calculate_bank_cycles(operands[1])
             instruction_dict['operand_with_type'] = [[operands[0], 'vector']]
         else:
-            instruction_dict['instructionWord'] = instruction_word
             instruction_dict['functionalUnit'] = 'ScalarU'
             instruction_dict['operands'] = [operands[1]]
             instruction_dict['destination'] = [operands[0]]
