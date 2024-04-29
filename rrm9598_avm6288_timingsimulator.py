@@ -6,6 +6,32 @@
 import os
 import argparse
 
+import csv
+
+class TimingDiagramExporter:
+    def __init__(self, timing_diagram, instrs):
+        self.timing_diagram = timing_diagram
+        self.max_cols = max(max(row, key=lambda x: x[1])[1] for row in self.timing_diagram) + 1
+        self.max_rows = len(self.timing_diagram)
+        self.instrs   = instrs
+
+    def generate_excel(self, filename):
+        with open(filename, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            
+            # Write column numbers in the first row
+            writer.writerow([''] + list(range(1, self.max_cols+1)))
+            
+            # Write data rows
+            for i in range(self.max_rows):
+                row_data = [''] * self.max_cols
+                for val, col in self.timing_diagram[i]:
+                    row_data[col] = val
+                row_data[0] = self.instrs.Read(i)
+                writer.writerow(row_data)
+                
+            
+
 class Config(object):
     def __init__(self, iodir):
         self.filepath = os.path.abspath(os.path.join(iodir, "Config.txt"))
@@ -279,6 +305,12 @@ class Core():
         self.ID_HALT = False
         self.EX_HALT = False
 
+        self.timing_diagram = []
+        instr_idx = 0
+        while self.imem.Read(instr_idx) != "HALT":
+            instr_idx+=1
+            self.timing_diagram.append([])
+        self.timing_diagram.append([]) # For halt
     
     def get_operands(self, instruction: list):
         if len(instruction) == 4:
@@ -363,7 +395,7 @@ class Core():
             if fu.getStatus() == "busy":
                 # print("FU {} is busy {}".format(fu, fu.cycles))
                 clear_operands = fu.decrement()
-
+                self.timing_diagram[fu.instr["instr_idx"]].append(("E", self.cycle))
                 if clear_operands:
                     operands = fu.instr["operand_with_type"]
                     fu.instr = None
@@ -372,7 +404,9 @@ class Core():
                             self.SRFBB.clearStatus(idx)
                         if _type == "vector":
                             self.VRFBB.clearStatus(idx)
-        # Halting
+        
+        # for fu in FUs:
+
     
     def decode(self, current_instruction: list, instr_idx: int):
         '''
@@ -453,7 +487,7 @@ class Core():
         # Checking Vector Data Queue
         Qs = [self.VDQ, self.VCQ, self.SCQ]
         FUs = [{"VectorLS", }, {"VectorADD", "VectorMUL", "VectorDIV", "VectorSHUF",}, {"ScalarU"}]
-
+        self.timing_diagram[instr["instr_idx"]].append(("D", self.cycle))
         for q, fus in zip(Qs, FUs):
             if len(q) < q.max_length and instr['functionalUnit'] in fus:
                 # print(instr)
@@ -510,13 +544,15 @@ class Core():
             "ScalarU": self.ScalarU
         }
         for q in Qs:
+            for instr in q.queue:
+                self.timing_diagram[instr["instr_idx"]].append(("D", self.cycle))
+        for q in Qs:
             if len(q) > 0:
                 instr = q.pop()
                 fu = _mapping[instr["functionalUnit"]]
                 
                 if fu.getStatus() == "free" and not self.operands_in_flight(instr):
                     fu.addInstr(instr)
-
                     operands = instr["operand_with_type"]
                     for (operand, _type) in operands:
                         if _type == "scalar":
@@ -584,6 +620,7 @@ class Core():
         # Decode Stage List - list which holds all inflight instructions that are yet to be decoded and pushed to the queue
         # decode_stage = []
         dispatch_success = True
+        # print(self.timing_diagram, len(self.timing_diagram))
         while(not self.EX_HALT):
             self.cycle += 1
             self.execute()
@@ -595,10 +632,10 @@ class Core():
 
 
             if not self.ID_HALT and instr:
-                decoded_instr = self.decode(instr, instr_idx)
+                decoded_instr = self.decode(instr, instr_idx-1)
                 if instr[0] == "HALT":
                     self.ID_HALT = True
-                    continue # Don't dispatch halt to queue?
+                    # continue # Don't dispatch halt to queue?
                 dispatch_success = self.dispatch_to_queue(decoded_instr)
             # If HALT has been reached, then all previous instrs have been successfully decoded and dispatched
 
@@ -608,6 +645,7 @@ class Core():
             
             if not self.IF_HALT:
                 instr = self.fetch(instr_idx)
+                self.timing_diagram[instr_idx].append(("F", self.cycle))
                 if instr[0] == "HALT":
                     self.IF_HALT = True
                 if dispatch_success:
@@ -625,6 +663,10 @@ class Core():
         print("------------------------------")
         print(" Total Cycles: ", self.cycle)
         print("------------------------------")
+        # print(self.timing_diagram, len(self.timing_diagram))
+        exporter = TimingDiagramExporter(self.timing_diagram, self.imem)
+        exporter.generate_excel("timing_diagram.csv")
+
 
         with open('result.txt', 'w') as f:
             f.write("Total cycles: {}".format(self.cycle))
