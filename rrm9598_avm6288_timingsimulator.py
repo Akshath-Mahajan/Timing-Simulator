@@ -185,8 +185,7 @@ class Queue():
             return None
         
     def __str__(self):
-        return_string = '[' + ", ".join(self.queue) + ']'
-        return return_string
+        return str(self.queue)
     
     def __len__(self):
         return len(self.queue)
@@ -439,6 +438,8 @@ class Core():
                 VLR_val = [eval(operands[1])]
                 self.VLR.Write(0, VLR_val)
             else:
+                if not operands:
+                    operands = []
                 instruction_dict['operand_with_type'] = [[_, 'scalar'] for _ in operands]
         return instruction_dict
     
@@ -448,29 +449,10 @@ class Core():
         Qs = [self.VDQ, self.VCQ, self.SCQ]
         FUs = [{"VectorLS", }, {"VectorADD", "VectorMUL", "VectorDIV", "VectorSHUF",}, {"ScalarU"}]
 
-        _mapping = {
-            "VectorLS": self.VectorLS,
-            "VectorADD": self.VectorADD,
-            "VectorMUL": self.VectorMUL,
-            "VectorDIV": self.VectorDIV,
-            "VectorSHUF": self.VectorSHUF,
-            "ScalarU": self.ScalarU
-        }
-
         for q, fus in zip(Qs, FUs):
             if len(q) < q.max_length and instr['functionalUnit'] in fus:
-                fu = _mapping[instr['functionalUnit']]
-                if fu.getStatus() == 'free':
-                    q.add(instr)
-                    # Busy Board handling
-                    operands = instr["operand_with_type"]
-                    for (operand, _type) in operands:
-                        if _type == "scalar":
-                            bb = self.SRFBB
-                        else:
-                            bb = self.VRFBB
-                        bb.setBusy(operand)
-                    return True
+                q.add(instr)
+                return True
         return False
 
     def pop_from_queues(self):
@@ -490,6 +472,14 @@ class Core():
                 if fu.getStatus() == "free":
                     q.pop()
                     fu.addInstr(instr)
+
+                operands = instr["operand_with_type"]
+                for (operand, _type) in operands:
+                    if _type == "scalar":
+                        bb = self.SRFBB
+                    else:
+                        bb = self.VRFBB
+                    bb.setBusy(operand)
                 # else:
                 #     print("Stalling the instruction - {} is busy".format(instr["functionalUnit"]))    # fu.setBusy()
             # else:
@@ -521,6 +511,23 @@ class Core():
                 return True
         return False
 
+    def printStatus(self):
+        print("=== Queues ===")
+        print("VDQ:", self.VDQ)
+        print("VCQ:", self.VCQ)
+        print("SCQ:", self.SCQ)
+        
+        print("=== FUs ===")
+        FUs = [
+            self.VectorLS,
+            self.VectorADD,
+            self.VectorMUL,
+            self.VectorDIV,
+            self.VectorSHUF,
+            self.ScalarU
+        ]
+        for fu in FUs:
+            print("{}: Instr {} Cycles {} Status {}".format(fu, fu.instr, fu.cycles, fu.getStatus()))
     def run(self):
         # Printing current VMIPS configuration
         print("")
@@ -561,10 +568,11 @@ class Core():
                 if dispatch_success:
                     instr_idx += 1
 
+            print("Cycle:", self.cycle)
+            print(self.printStatus())
             # self.IF_NOP = instr[0] == "HALT"
 
 
-            
         
         print("------------------------------")
         print(" Total Cycles: ", self.cycle)
