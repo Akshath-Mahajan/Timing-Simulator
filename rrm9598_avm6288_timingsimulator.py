@@ -369,7 +369,7 @@ class Core():
                             self.SRFBB.clearStatus(idx)
                         if _type == "vector":
                             self.VRFBB.clearStatus(idx)
-
+        # Halting
     
     def decode(self, current_instruction: list):
         '''
@@ -499,7 +499,28 @@ class Core():
         if idx < len(self.imem.instructions):
             instr = self.imem.Read(idx)
             return instr.split(" ")
-        
+    
+    def q_filled(self):
+        Qs = [self.VCQ, self.VDQ, self.SCQ]
+        for q in Qs:
+            if len(q):
+                return True
+        return False
+    
+    def fu_filled(self):
+        FUs = [
+            self.VectorLS,
+            self.VectorADD,
+            self.VectorMUL,
+            self.VectorDIV,
+            self.VectorSHUF,
+            self.ScalarU
+        ]
+        for fu in FUs:
+            if fu.getStatus() == "busy":
+                return True
+        return False
+
     def run(self):
         # Printing current VMIPS configuration
         print("")
@@ -511,11 +532,14 @@ class Core():
         # Decode Stage List - list which holds all inflight instructions that are yet to be decoded and pushed to the queue
         # decode_stage = []
         dispatch_success = True
-        while(True):
-            
+        while(not self.EX_HALT):
+            self.cycle += 1
             self.execute()
-            # if self.cycle > 78:
-            #     break
+            
+            # Halting:
+            anything_in_flight = self.fu_filled() or self.q_filled()
+            self.EX_HALT = self.ID_HALT and not anything_in_flight
+
 
 
             if not self.ID_HALT and instr:
@@ -540,7 +564,7 @@ class Core():
             # self.IF_NOP = instr[0] == "HALT"
 
 
-            self.cycle += 1
+            
         
         print("------------------------------")
         print(" Total Cycles: ", self.cycle)
