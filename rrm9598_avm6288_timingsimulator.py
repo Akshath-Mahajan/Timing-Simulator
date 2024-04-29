@@ -374,7 +374,7 @@ class Core():
                             self.VRFBB.clearStatus(idx)
         # Halting
     
-    def decode(self, current_instruction: list):
+    def decode(self, current_instruction: list, instr_idx: int):
         '''
         Returns an Instruction Dictionary = {
             instructionWord: ,
@@ -388,6 +388,7 @@ class Core():
         instruction_dict = dict()
         instruction_word = str(current_instruction[0])
         instruction_dict['instructionWord'] = instruction_word
+        instruction_dict['instr_idx'] = instr_idx
                 
         if instruction_word == 'HALT':
             instruction_dict['functionalUnit'] = 'ScalarU'
@@ -472,22 +473,26 @@ class Core():
             self.ScalarU
         ]
         operands = instr["operand_with_type"]
+        instr_idx = instr["instr_idx"]
         # print(operands)
         if len(operands) == 0:
             return False
         for fu in fus:
             if fu.getStatus() == "busy":
                 busy_destination = fu.instr["operand_with_type"][0] # (op, type)
+                # print("destination", busy_destination, fu.instr)
+                busy_instr_idx = fu.instr["instr_idx"]
                 for opr in operands:
-                    if opr[0] == busy_destination[0] and opr[1] == busy_destination[1]:
+                    if opr[0] == busy_destination[0] and opr[1] == busy_destination[1] and busy_instr_idx < instr_idx:
                         return True
                 
         for q in qs:
             for q_instr in q.queue:
                 busy_destination = q_instr["operand_with_type"][0] # (op, type)
+                busy_instr_idx = q_instr["instr_idx"]
 
                 for opr in operands:
-                    if opr[0] == busy_destination[0] and opr[1] == busy_destination[1]:
+                    if opr[0] == busy_destination[0] and opr[1] == busy_destination[1] and busy_instr_idx < instr_idx:
                         return True
         # print("NO FLIGHT")
         return False
@@ -590,7 +595,7 @@ class Core():
 
 
             if not self.ID_HALT and instr:
-                decoded_instr = self.decode(instr)
+                decoded_instr = self.decode(instr, instr_idx)
                 if instr[0] == "HALT":
                     self.ID_HALT = True
                     continue # Don't dispatch halt to queue?
@@ -608,8 +613,8 @@ class Core():
                 if dispatch_success:
                     instr_idx += 1
 
-            print("Cycle:", self.cycle, )
-            print(self.printStatus())
+            print("Cycle:", self.cycle)
+            # print(self.printStatus())
 
             # if self.cycle > 100:
             #     break
