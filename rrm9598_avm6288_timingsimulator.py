@@ -370,111 +370,70 @@ class Core():
         Returns an Instruction Dictionary = {
             instructionWord: ,
             functionalUnit: VectorLS/VectorADD/VectorMUL/VectorDIV/VectorSHUF/ScalarU,
-            operands: list(int),
-            destination: (int),
             cycles: (int),
             operand_with_type: list([idx, scalar])
+                               index = 0 -> Destination Register
         }
         '''
 
         instruction_dict = dict()
         instruction_word = str(current_instruction[0])
+        instruction_dict['instructionWord'] = instruction_word
                 
         if instruction_word == 'HALT':
-            instruction_dict['instructionWord'] = instruction_word
             instruction_dict['functionalUnit'] = 'ScalarU'
-            instruction_dict['operands'] = None
-            instruction_dict['destination'] = None
             instruction_dict['cycles'] = 1
             instruction_dict['operand_with_type'] = []
-        elif instruction_word == 'ADDVV' or instruction_word == 'SUBVV':
+        elif instruction_word == 'ADDVV' or instruction_word == 'SUBVV' or (instruction_word.startswith('S') and instruction_word.endswith('VV')):
             operands = self.get_operands(current_instruction)
-            instruction_dict['instructionWord'] = instruction_word
             instruction_dict['functionalUnit'] = 'VectorADD'
-            instruction_dict['operands'] = [operands[1], operands[2]]
-            instruction_dict['destination'] = [operands[0]]
             instruction_dict['cycles'] = self.config.parameters['pipelineDepthAdd'] + (self.VLR.Read(0)[0] // self.config.parameters['numLanes']) - 1
             instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'vector']]
-        elif instruction_word == 'ADDVS' or instruction_word == 'SUBVS':
+        elif instruction_word == 'ADDVS' or instruction_word == 'SUBVS' or (instruction_word.startswith('S') and instruction_word.endswith('VS')):
             operands = self.get_operands(current_instruction)
-            instruction_dict['instructionWord'] = instruction_word
             instruction_dict['functionalUnit'] = 'VectorADD'
-            instruction_dict['operands'] = [operands[1], operands[2]]
-            instruction_dict['destination'] = [operands[0]]
             instruction_dict['cycles'] = self.config.parameters['pipelineDepthAdd'] + (self.VLR.Read(0)[0] // self.config.parameters['numLanes']) - 1
             instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'scalar']]
         elif instruction_word == 'MULVV':
             operands = self.get_operands(current_instruction)
-            instruction_dict['instructionWord'] = instruction_word
             instruction_dict['functionalUnit'] = 'VectorMUL'
-            instruction_dict['operands'] = [operands[1], operands[2]]
-            instruction_dict['destination'] = [operands[0]]
             instruction_dict['cycles'] = self.config.parameters['pipelineDepthMul'] + (self.VLR.Read(0)[0] // self.config.parameters['numLanes']) - 1
             instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'vector']]
         elif instruction_word == 'MULVS':
             operands = self.get_operands(current_instruction)
-            instruction_dict['instructionWord'] = instruction_word
             instruction_dict['functionalUnit'] = 'VectorMUL'
-            instruction_dict['operands'] = [operands[1], operands[2]]
-            instruction_dict['destination'] = [operands[0]]
             instruction_dict['cycles'] = self.config.parameters['pipelineDepthMul'] + (self.VLR.Read(0)[0] // self.config.parameters['numLanes']) - 1
             instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'scalar']]
         elif instruction_word == 'DIVVV':
             operands = self.get_operands(current_instruction)
-            instruction_dict['instructionWord'] = instruction_word
             instruction_dict['functionalUnit'] = 'VectorDIV'
-            instruction_dict['operands'] = [operands[1], operands[2]]
-            instruction_dict['destination'] = [operands[0]]
             instruction_dict['cycles'] = self.config.parameters['pipelineDepthDiv'] + (self.VLR.Read(0)[0] // self.config.parameters['numLanes']) - 1
             instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'vector']]
         elif instruction_word == 'DIVVS':
             operands = self.get_operands(current_instruction)
-            instruction_dict['instructionWord'] = instruction_word
             instruction_dict['functionalUnit'] = 'VectorDIV'
-            instruction_dict['operands'] = [operands[1], operands[2]]
-            instruction_dict['destination'] = [operands[0]]
             instruction_dict['cycles'] = self.config.parameters['pipelineDepthDiv'] + (self.VLR.Read(0)[0] // self.config.parameters['numLanes']) - 1
-            instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'scalar']]
-        elif instruction_word.startswith('S') and instruction_word.endswith('VV'):
-            operands = self.get_operands(current_instruction)
-            instruction_dict['instructionWord'] = instruction_word
-            instruction_dict['functionalUnit'] = 'VectorADD'
-            instruction_dict['operands'] = [operands[1], operands[2]]
-            instruction_dict['destination'] = [operands[0]]
-            instruction_dict['cycles'] = self.config.parameters['pipelineDepthAdd'] + (self.VLR.Read(0)[0] // self.config.parameters['numLanes']) - 1
-            instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'vector']]
-        elif instruction_word.startswith('S') and instruction_word.endswith('VS'):
-            operands = self.get_operands(current_instruction)
-            instruction_dict['instructionWord'] = instruction_word
-            instruction_dict['functionalUnit'] = 'VectorADD'
-            instruction_dict['operands'] = [operands[1], operands[2]]
-            instruction_dict['destination'] = [operands[0]]
-            instruction_dict['cycles'] = self.config.parameters['pipelineDepthAdd'] + (self.VLR.Read(0)[0] // self.config.parameters['numLanes']) - 1
             instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'scalar']]
         elif "PACK" in instruction_word:
             operands = self.get_operands(current_instruction)
-            instruction_dict['instructionWord'] = instruction_word
             instruction_dict['functionalUnit'] = 'VectorSHUF'
-            instruction_dict['operands'] = [operands[1], operands[2]]
-            instruction_dict['destination'] = [operands[0]]
             instruction_dict['cycles'] = self.config.parameters['pipelineDepthShuffle'] + (self.VLR.Read(0)[0] // self.config.parameters['numLanes']) - 1
             instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'vector']]
         elif instruction_word.startswith('LV') or instruction_word.startswith('SV'):
             operands = self.get_operands(current_instruction)
-            instruction_dict['instructionWord'] = instruction_word
             instruction_dict['functionalUnit'] = 'VectorLS'
-            instruction_dict['operands'] = [operands[1]]
-            instruction_dict['destination'] = [operands[0]]
             instruction_dict['cycles'] = self.calculate_bank_cycles(operands[1])
             instruction_dict['operand_with_type'] = [[operands[0], 'vector']]
         else:
-            instruction_dict['instructionWord'] = instruction_word
             instruction_dict['functionalUnit'] = 'ScalarU'
-            instruction_dict['operands'] = [operands[1]]
-            instruction_dict['destination'] = [operands[0]]
-            # TODO - Add memory bank calculated cycles here...
             instruction_dict['cycles'] = 1
-            instruction_dict['operand_with_type'] = [[operands[0], 'vector']]
+            operands = self.get_operands(current_instruction)
+            if instruction_word == 'MTCL':
+                instruction_dict['operand_with_type'] = [[operands[0], 'scalar']]
+                VLR_val = [eval(operands[1])]
+                self.VLR.Write(0, VLR_val)
+            else:
+                instruction_dict['operand_with_type'] = [[_, 'scalar'] for _ in operands]
         return instruction_dict
     
 
