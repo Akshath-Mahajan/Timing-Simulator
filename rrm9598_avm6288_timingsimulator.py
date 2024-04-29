@@ -175,6 +175,9 @@ class Queue():
         else:
             print("ERROR - Queue is empty!")
             return None
+    def unpop(self, instr):
+        self.queue = [instr] + self.queue
+        return None
     
     def getNextInQueue(self):
         if len(self.queue) > 0:
@@ -363,6 +366,7 @@ class Core():
 
                 if clear_operands:
                     operands = fu.instr["operand_with_type"]
+                    fu.instr = None
                     for (idx, _type) in operands:
                         if _type == "scalar":
                             self.SRFBB.clearStatus(idx)
@@ -451,9 +455,44 @@ class Core():
 
         for q, fus in zip(Qs, FUs):
             if len(q) < q.max_length and instr['functionalUnit'] in fus:
+                # print(instr)
+                # if not self.operands_in_flight(instr):
                 q.add(instr)
                 return True
         return False
+    
+    def operands_in_flight(self, instr):
+        qs = [self.VDQ, self.VCQ, self.SCQ]
+        fus = [
+            self.VectorLS,
+            self.VectorADD,
+            self.VectorMUL, 
+            self.VectorDIV, 
+            self.VectorSHUF,
+            self.ScalarU
+        ]
+        operands = instr["operand_with_type"]
+        # print(operands)
+        if len(operands) == 0:
+            return False
+        for fu in fus:
+            if fu.getStatus() == "busy":
+                busy_destination = fu.instr["operand_with_type"][0] # (op, type)
+                for opr in operands:
+                    if opr[0] == busy_destination[0] and opr[1] == busy_destination[1]:
+                        return True
+                
+        for q in qs:
+            for q_instr in q.queue:
+                busy_destination = q_instr["operand_with_type"][0] # (op, type)
+
+                for opr in operands:
+                    if opr[0] == busy_destination[0] and opr[1] == busy_destination[1]:
+                        return True
+        # print("NO FLIGHT")
+        return False
+        
+
 
     def pop_from_queues(self):
         Qs = [self.VDQ, self.VCQ, self.SCQ]
@@ -467,21 +506,22 @@ class Core():
         }
         for q in Qs:
             if len(q) > 0:
-                instr = q.getNextInQueue()
+                instr = q.pop()
                 fu = _mapping[instr["functionalUnit"]]
-                if fu.getStatus() == "free":
-                    q.pop()
+                
+                if fu.getStatus() == "free" and not self.operands_in_flight(instr):
                     fu.addInstr(instr)
 
-                operands = instr["operand_with_type"]
-                for (operand, _type) in operands:
-                    if _type == "scalar":
-                        bb = self.SRFBB
-                    else:
-                        bb = self.VRFBB
-                    bb.setBusy(operand)
-                # else:
-                #     print("Stalling the instruction - {} is busy".format(instr["functionalUnit"]))    # fu.setBusy()
+                    operands = instr["operand_with_type"]
+                    for (operand, _type) in operands:
+                        if _type == "scalar":
+                            bb = self.SRFBB
+                        else:
+                            bb = self.VRFBB
+                        bb.setBusy(operand)
+                else:
+                    q.unpop(instr)
+                    # print("Stalling the instruction - {} is busy".format(instr["functionalUnit"]))    # fu.setBusy()
             # else:
             #     print("No instructions in Queue:", q)
 
@@ -568,8 +608,11 @@ class Core():
                 if dispatch_success:
                     instr_idx += 1
 
-            print("Cycle:", self.cycle)
+            print("Cycle:", self.cycle, )
             print(self.printStatus())
+
+            # if self.cycle > 100:
+            #     break
             # self.IF_NOP = instr[0] == "HALT"
 
 
