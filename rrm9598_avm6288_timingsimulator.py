@@ -613,18 +613,21 @@ class Core():
                 if dispatch_success:
                     instr_idx += 1
 
-            print("Cycle:", self.cycle)
+            # print("Cycle:", self.cycle)
             # print(self.printStatus())
 
             # if self.cycle > 100:
             #     break
             # self.IF_NOP = instr[0] == "HALT"
 
-        self.cycle += 1
+        self.cycle += 1 # Halt execute cycle
         
         print("------------------------------")
         print(" Total Cycles: ", self.cycle)
         print("------------------------------")
+
+        with open('result.txt', 'w') as f:
+            f.write("Total cycles: {}".format(self.cycle))
 
     def dumpregs(self, iodir):
         for rf in self.RFs.values():
