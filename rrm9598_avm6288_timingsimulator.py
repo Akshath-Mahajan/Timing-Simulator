@@ -352,7 +352,7 @@ class Core():
             # print(banks)
         
         # If anything is left in bank busy, then add it to n_banks
-        return n_cycles + max(banks)
+        return n_cycles + max(banks) -1
     
     
     def execute(self):
@@ -620,7 +620,7 @@ class Core():
             #     break
             # self.IF_NOP = instr[0] == "HALT"
 
-
+        self.cycle += 1
         
         print("------------------------------")
         print(" Total Cycles: ", self.cycle)
