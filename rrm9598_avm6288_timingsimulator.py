@@ -230,6 +230,7 @@ class BusyBoard():
         if idx < self.length:
             self.statuses[idx] = 'busy'
         else:
+            print(idx, self.length)
             print("ERROR - Invalid index access in the busy board!")
     
     def clearStatus(self, idx = 0):
@@ -335,6 +336,9 @@ class Core():
             destination_reg_idx = int(destination[2:])
             if operand1.startswith('('):
                 address = eval(operand1)
+                # print(type(address))
+                if type(address) == int:
+                    return [destination_reg_idx]
                 return [destination_reg_idx, address]
             else:
                 operand1_reg_idx = int(operand1[2:])
@@ -343,6 +347,8 @@ class Core():
             operand1 = str(instruction[1])
             if operand1.startswith('('):
                 address = eval(operand1)
+                if type(address) == int:
+                    return []
                 return [address]
             else:
                 operand1_reg_idx = int(operand1[2:])
