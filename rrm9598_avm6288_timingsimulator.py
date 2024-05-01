@@ -724,8 +724,9 @@ if __name__ == "__main__":
     # Run Core
     vcore.run()   
     # vcore.dumpregs(iodir)
-    vcore.dumpTimingDiagram(iodir)
+    
     vcore.dumpResult(iodir)
+    vcore.dumpTimingDiagram(iodir)
 
     # sdmem.dump()
     # vdmem.dump()
