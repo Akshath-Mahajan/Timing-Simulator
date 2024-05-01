@@ -531,24 +531,26 @@ class Core():
             return False
         for fu in fus:
             if fu.getStatus() == "busy":
-                busy_destination = fu.instr["operand_with_type"][0] # (op, type)
-                # print("destination", busy_destination, fu.instr)
                 busy_instr_idx = fu.instr["instr_idx"]
-                for opr in operands:
-                    if opr[0] == busy_destination[0] and opr[1] == busy_destination[1] and busy_instr_idx < instr_idx:
-                        return True
-                
-        for q in qs:
-            for q_instr in q.queue:
-                print(q_instr)
-                # Error handling for HALT and CVM instruction, as they have no destination register
-                if len(q_instr["operand_with_type"]) != 0:
-                    busy_destination = q_instr["operand_with_type"][0] # (op, type)
-                    busy_instr_idx = q_instr["instr_idx"]
-
+                for busy_destination in fu.instr["operand_with_type"]:
+                # busy_destination = fu.instr["operand_with_type"][0] # (op, type)
+                # print("destination", busy_destination, fu.instr)
                     for opr in operands:
                         if opr[0] == busy_destination[0] and opr[1] == busy_destination[1] and busy_instr_idx < instr_idx:
                             return True
+                
+        for q in qs:
+            for q_instr in q.queue:
+                # print(q_instr)
+                # Error handling for HALT and CVM instruction, as they have no destination register
+                if len(q_instr["operand_with_type"]) != 0:
+                    for busy_destination in q_instr["operand_with_type"]:
+                    # busy_destination = q_instr["operand_with_type"][0] # (op, type)
+                        busy_instr_idx = q_instr["instr_idx"]
+
+                        for opr in operands:
+                            if opr[0] == busy_destination[0] and opr[1] == busy_destination[1] and busy_instr_idx < instr_idx:
+                                return True
         # print("NO FLIGHT")
         return False
         
@@ -666,7 +668,7 @@ class Core():
             # Pop regardless of decode/dispatch
             self.pop_from_queues()
             
-            if not self.IF_HALT:
+            if not self.IF_HALT and dispatch_success:
                 instr = self.fetch(instr_idx)
                 self.timing_diagram[instr_idx].append(("F", self.cycle))
                 if instr[0] == "HALT":
