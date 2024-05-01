@@ -409,6 +409,7 @@ class Core():
                 if fu.getStatus() == "busy" and fu.instr["instructionWord"] in self.wait_instrs:
                     fu.clearStatus()
                     c = False
+                    # print(self.fu_filled(), self.q_instrs_before(fu.instr["instr_idx"]))
                     if self.fu_filled() or self.q_instrs_before(fu.instr["instr_idx"]):
                         # If FU is filled or there are instrs that need to be executed before instr in the queue
                         c = True
@@ -592,8 +593,16 @@ class Core():
                 self.timing_diagram[instr["instr_idx"]].append(("D", self.cycle))
         for q in Qs:
             if len(q) > 0:
+                if self.ScalarU.getStatus() == "busy" and self.ScalarU.instr["instructionWord"] in self.wait_instrs:
+                    # If a wait instruction is being processed
+                    instr = q.getNextInQueue()
+                    if instr["instr_idx"] > self.ScalarU.instr["instr_idx"]:
+                        # If this q has instr after the wait instr then go to next q
+                        continue
+
                 instr = q.pop()
                 fu = _mapping[instr["functionalUnit"]]
+                
                 
                 if fu.getStatus() == "free" and not self.operands_in_flight(instr):
                     fu.addInstr(instr)
