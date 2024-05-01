@@ -1,4 +1,3 @@
-CVM                     # clear vector mask
 MFCL SR2                # SR2 = VLR = 64
 LS SR1 SR0 6            # SR1 = memory[SR0 + 6] = 256 <- This is the starting address of 'a' vector
 LS SR3 SR0 0            # SR3 = memory[SR0 + 0] = 1
