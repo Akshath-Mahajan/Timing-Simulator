@@ -311,6 +311,8 @@ class Core():
             instr_idx+=1
             self.timing_diagram.append([])
         self.timing_diagram.append([]) # For halt
+
+        self.wait_instrs = {"HALT", "CVM", "MTCL"}
     
     def get_operands(self, instruction: list):
         if len(instruction) == 4:
@@ -390,12 +392,31 @@ class Core():
         # If anything is left in bank busy, then add it to n_banks
         return n_cycles + max(banks) -1
     
+    def q_instrs_before(self, idx):
+        Qs = [self.VCQ, self.VDQ, self.SCQ]
+        for q in Qs:
+            for q_instr in q.queue:
+                if q_instr["instr_idx"] < idx:
+                    return True
+        return False
     
     def execute(self):
         # instr has FU
-        FUs = [self.VectorLS, self.VectorADD, self.VectorDIV, self.VectorMUL, self.VectorSHUF, self.ScalarU]
+        FUs = [self.ScalarU, self.VectorLS, self.VectorADD, self.VectorDIV, self.VectorMUL, self.VectorSHUF]
 
         for fu in FUs:
+            if fu.name == "ScalarU":
+                if fu.getStatus() == "busy" and fu.instr["instructionWord"] in self.wait_instrs:
+                    fu.clearStatus()
+                    c = False
+                    if self.fu_filled() or self.q_instrs_before(fu.instr["instr_idx"]):
+                        # If FU is filled or there are instrs that need to be executed before instr in the queue
+                        c = True
+                    fu.setBusy()
+                    self.timing_diagram[fu.instr["instr_idx"]].append(("D", self.cycle))
+                    if c:
+                        continue
+
             if fu.getStatus() == "busy":
                 # print("FU {} is busy {}".format(fu, fu.cycles))
                 clear_operands = fu.decrement()
@@ -683,7 +704,7 @@ class Core():
             #     break
             # self.IF_NOP = instr[0] == "HALT"
 
-        self.cycle += 1 # Halt execute cycle
+        # self.cycle += 1 # Halt execute cycle
         
         print("------------------------------")
         print(" Total Cycles: ", self.cycle)
