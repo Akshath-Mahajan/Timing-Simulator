@@ -540,7 +540,6 @@ class Core():
                 
         for q in qs:
             for q_instr in q.queue:
-                print(q_instr)
                 # Error handling for HALT and CVM instruction, as they have no destination register
                 if len(q_instr["operand_with_type"]) != 0:
                     busy_destination = q_instr["operand_with_type"][0] # (op, type)
