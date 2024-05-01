@@ -540,12 +540,14 @@ class Core():
                 
         for q in qs:
             for q_instr in q.queue:
-                busy_destination = q_instr["operand_with_type"][0] # (op, type)
-                busy_instr_idx = q_instr["instr_idx"]
+                # Error handling for HALT instruction, as it has no destination register
+                if q_instr["instructionWord"] != "HALT":
+                    busy_destination = q_instr["operand_with_type"][0] # (op, type)
+                    busy_instr_idx = q_instr["instr_idx"]
 
-                for opr in operands:
-                    if opr[0] == busy_destination[0] and opr[1] == busy_destination[1] and busy_instr_idx < instr_idx:
-                        return True
+                    for opr in operands:
+                        if opr[0] == busy_destination[0] and opr[1] == busy_destination[1] and busy_instr_idx < instr_idx:
+                            return True
         # print("NO FLIGHT")
         return False
         
