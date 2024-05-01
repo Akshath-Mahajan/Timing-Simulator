@@ -311,6 +311,8 @@ class Core():
             instr_idx+=1
             self.timing_diagram.append([])
         self.timing_diagram.append([]) # For halt
+
+        self.wait_instrs = {"HALT", "CVM", "MTCL"}
     
     def get_operands(self, instruction: list):
         if len(instruction) == 4:
@@ -390,12 +392,31 @@ class Core():
         # If anything is left in bank busy, then add it to n_banks
         return n_cycles + max(banks) -1
     
+    def q_instrs_before(self, idx):
+        Qs = [self.VCQ, self.VDQ, self.SCQ]
+        for q in Qs:
+            for q_instr in q.queue:
+                if q_instr["instr_idx"] < idx:
+                    return True
+        return False
     
     def execute(self):
         # instr has FU
-        FUs = [self.VectorLS, self.VectorADD, self.VectorDIV, self.VectorMUL, self.VectorSHUF, self.ScalarU]
+        FUs = [self.ScalarU, self.VectorLS, self.VectorADD, self.VectorDIV, self.VectorMUL, self.VectorSHUF]
 
         for fu in FUs:
+            if fu.name == "ScalarU":
+                if fu.getStatus() == "busy" and fu.instr["instructionWord"] in self.wait_instrs:
+                    fu.clearStatus()
+                    c = False
+                    if self.fu_filled() or self.q_instrs_before(fu.instr["instr_idx"]):
+                        # If FU is filled or there are instrs that need to be executed before instr in the queue
+                        c = True
+                    fu.setBusy()
+                    self.timing_diagram[fu.instr["instr_idx"]].append(("D", self.cycle))
+                    if c:
+                        continue
+
             if fu.getStatus() == "busy":
                 # print("FU {} is busy {}".format(fu, fu.cycles))
                 clear_operands = fu.decrement()
@@ -531,23 +552,25 @@ class Core():
             return False
         for fu in fus:
             if fu.getStatus() == "busy":
-                busy_destination = fu.instr["operand_with_type"][0] # (op, type)
-                # print("destination", busy_destination, fu.instr)
                 busy_instr_idx = fu.instr["instr_idx"]
-                for opr in operands:
-                    if opr[0] == busy_destination[0] and opr[1] == busy_destination[1] and busy_instr_idx < instr_idx:
-                        return True
+                for busy_destination in fu.instr["operand_with_type"]:
+                # busy_destination = fu.instr["operand_with_type"][0] # (op, type)
+                # print("destination", busy_destination, fu.instr)
+                    for opr in operands:
+                        if opr[0] == busy_destination[0] and opr[1] == busy_destination[1] and busy_instr_idx < instr_idx:
+                            return True
                 
         for q in qs:
             for q_instr in q.queue:
                 # Error handling for HALT and CVM instruction, as they have no destination register
                 if len(q_instr["operand_with_type"]) != 0:
-                    busy_destination = q_instr["operand_with_type"][0] # (op, type)
-                    busy_instr_idx = q_instr["instr_idx"]
+                    for busy_destination in q_instr["operand_with_type"]:
+                    # busy_destination = q_instr["operand_with_type"][0] # (op, type)
+                        busy_instr_idx = q_instr["instr_idx"]
 
-                    for opr in operands:
-                        if opr[0] == busy_destination[0] and opr[1] == busy_destination[1] and busy_instr_idx < instr_idx:
-                            return True
+                        for opr in operands:
+                            if opr[0] == busy_destination[0] and opr[1] == busy_destination[1] and busy_instr_idx < instr_idx:
+                                return True
         # print("NO FLIGHT")
         return False
         
@@ -665,7 +688,7 @@ class Core():
             # Pop regardless of decode/dispatch
             self.pop_from_queues()
             
-            if not self.IF_HALT:
+            if not self.IF_HALT and dispatch_success:
                 instr = self.fetch(instr_idx)
                 self.timing_diagram[instr_idx].append(("F", self.cycle))
                 if instr[0] == "HALT":
@@ -680,7 +703,7 @@ class Core():
             #     break
             # self.IF_NOP = instr[0] == "HALT"
 
-        self.cycle += 1 # Halt execute cycle
+        # self.cycle += 1 # Halt execute cycle
         
         print("------------------------------")
         print(" Total Cycles: ", self.cycle)
