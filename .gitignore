@@ -1,1 +1,3 @@
 .DS_Store
+test_cases/test_conv/timing_diagram.csv
+test_cases/test_fcc/timing_diagram.csv

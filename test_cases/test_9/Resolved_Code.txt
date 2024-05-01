@@ -1,0 +1,13 @@
+LS SR1 (0)
+LS SR2 (0)
+B (4)
+B (5)
+LS SR4 (3)
+B (7)
+LS SR5 (3)
+B (10)
+B (11)
+LS SR7 (3)
+B (14)
+SS SR1 (16)
+HALT

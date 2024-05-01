@@ -357,13 +357,17 @@ class Core():
         banks = [0 for _ in range(n_banks)]
         # print("Banks:", n_banks, "Lanes:", n_lanes)
         addrs = []
-        for i in range((len(addresses) // n_lanes) + 1):
-            start_idx = i*n_lanes
-            end_idx   = (i+1)*n_lanes
+        if type(addresses) is not int:
+            for i in range((len(addresses) // n_lanes) + 1):
+                start_idx = i*n_lanes
+                end_idx   = (i+1)*n_lanes
 
-            addrs.append(
-                addresses[start_idx:end_idx]
-            )
+                addrs.append(
+                    addresses[start_idx:end_idx]
+                )
+        else:
+            # For the case when there is only one load address or one store address, i.e. VLR of 1
+            addrs.append([addresses])
         # print("Addrs:", addrs)
         # addrs = [[addresses to issue at cycle 1], [addresses to issue at cycle 2]]
 
@@ -424,7 +428,7 @@ class Core():
         instruction_dict['instructionWord'] = instruction_word
         instruction_dict['instr_idx'] = instr_idx
                 
-        if instruction_word == 'HALT':
+        if instruction_word == 'HALT' or instruction_word == 'CVM':
             instruction_dict['functionalUnit'] = 'ScalarU'
             instruction_dict['cycles'] = 1
             instruction_dict['operand_with_type'] = []
@@ -483,12 +487,14 @@ class Core():
         else:
             instruction_dict['functionalUnit'] = 'ScalarU'
             instruction_dict['cycles'] = 1
-            operands = self.get_operands(current_instruction)
             if instruction_word == 'MTCL':
+                operands = self.get_operands(current_instruction[:2])
                 instruction_dict['operand_with_type'] = [[operands[0], 'scalar']]
-                VLR_val = [eval(operands[1])]
+                VLR_val = eval(current_instruction[2])
                 self.VLR.Write(0, VLR_val)
+                # print("VLR Value: ", self.VLR.Read(0))
             else:
+                operands = self.get_operands(current_instruction)
                 if not operands:
                     operands = []
                 instruction_dict['operand_with_type'] = [[_, 'scalar'] for _ in operands]
@@ -534,12 +540,15 @@ class Core():
                 
         for q in qs:
             for q_instr in q.queue:
-                busy_destination = q_instr["operand_with_type"][0] # (op, type)
-                busy_instr_idx = q_instr["instr_idx"]
+                print(q_instr)
+                # Error handling for HALT and CVM instruction, as they have no destination register
+                if len(q_instr["operand_with_type"]) != 0:
+                    busy_destination = q_instr["operand_with_type"][0] # (op, type)
+                    busy_instr_idx = q_instr["instr_idx"]
 
-                for opr in operands:
-                    if opr[0] == busy_destination[0] and opr[1] == busy_destination[1] and busy_instr_idx < instr_idx:
-                        return True
+                    for opr in operands:
+                        if opr[0] == busy_destination[0] and opr[1] == busy_destination[1] and busy_instr_idx < instr_idx:
+                            return True
         # print("NO FLIGHT")
         return False
         
@@ -716,8 +725,9 @@ if __name__ == "__main__":
     # Run Core
     vcore.run()   
     # vcore.dumpregs(iodir)
-    vcore.dumpTimingDiagram(iodir)
+    
     vcore.dumpResult(iodir)
+    vcore.dumpTimingDiagram(iodir)
 
     # sdmem.dump()
     # vdmem.dump()
