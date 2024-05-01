@@ -428,7 +428,7 @@ class Core():
         instruction_dict['instructionWord'] = instruction_word
         instruction_dict['instr_idx'] = instr_idx
                 
-        if instruction_word == 'HALT':
+        if instruction_word == 'HALT' or instruction_word == 'CVM':
             instruction_dict['functionalUnit'] = 'ScalarU'
             instruction_dict['cycles'] = 1
             instruction_dict['operand_with_type'] = []
@@ -540,8 +540,9 @@ class Core():
                 
         for q in qs:
             for q_instr in q.queue:
-                # Error handling for HALT instruction, as it has no destination register
-                if q_instr["instructionWord"] != "HALT":
+                print(q_instr)
+                # Error handling for HALT and CVM instruction, as they have no destination register
+                if len(q_instr["operand_with_type"]) != 0:
                     busy_destination = q_instr["operand_with_type"][0] # (op, type)
                     busy_instr_idx = q_instr["instr_idx"]
 
