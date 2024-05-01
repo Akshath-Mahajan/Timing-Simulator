@@ -88,3 +88,9 @@ HALT
     ```
     python rrm9598_avm6288_timingsimulator.py --iodir test_cases/test_0
     ```
+
+3. To generate the Timing Diagram CSV file, use the following code. However, note that, for large programs like fully connected layer and convolution layer, the CSV file size is very large (in GB), and the code execution takes much longer.
+
+    ```
+    python rrm9598_avm6288_timingsimulator.py --iodir test_cases/test_0 --timing Y
+    ```
