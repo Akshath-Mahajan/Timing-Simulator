@@ -408,6 +408,16 @@ class Core():
                     return True
         return False
     
+    def wait_instr_in_q(self):
+        q = self.SCQ
+        for q_instr in q.queue:
+            if q_instr["instructionWord"] in self.wait_instrs:
+                return q_instr, True
+        
+        fu = self.ScalarU
+        if fu.getStatus() == "busy" and fu.instr["instructionWord"] in self.wait_instrs:
+            return fu.instr, True
+        return None, False
     def execute(self):
         # instr has FU
         FUs = [self.ScalarU, self.VectorLS, self.VectorADD, self.VectorDIV, self.VectorMUL, self.VectorSHUF]
@@ -418,7 +428,7 @@ class Core():
                     fu.clearStatus()
                     c = False
                     # print(self.fu_filled(), self.q_instrs_before(fu.instr["instr_idx"]))
-                    if self.fu_filled() or self.q_instrs_before(fu.instr["instr_idx"]):
+                    if self.fu_filled():
                         # If FU is filled or there are instrs that need to be executed before instr in the queue
                         c = True
                     fu.setBusy()
@@ -608,12 +618,15 @@ class Core():
                 self.timing_diagram[instr["instr_idx"]].append(("D", self.cycle))
         for q in Qs:
             if len(q) > 0:
-                if self.ScalarU.getStatus() == "busy" and self.ScalarU.instr["instructionWord"] in self.wait_instrs:
-                    # If a wait instruction is being processed
+                wait_instr, waitInQ = self.wait_instr_in_q()
+                if waitInQ:                     # If a wait instruction is in queue
                     instr = q.getNextInQueue()
-                    if instr["instr_idx"] > self.ScalarU.instr["instr_idx"]:
+                    if instr["instr_idx"] > wait_instr["instr_idx"]:
                         # If this q has instr after the wait instr then go to next q
                         continue
+                    # elif instr["instr_idx"] == wait_instr["instr_idx"]:
+                        # If this instr is the wait instr:
+
 
                 instr = q.pop()
                 fu = _mapping[instr["functionalUnit"]]
