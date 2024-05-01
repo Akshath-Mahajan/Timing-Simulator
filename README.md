@@ -1,5 +1,10 @@
 # Vector Processor - Timing Simulator
 
+__Authors:__
+
+- Akshath Mahajan (avm6288)
+- Rugved Mhatre (rrm9598)
+
 ## VMIPS ISA Specifications
 
 - Vector Length - 64
@@ -82,4 +87,10 @@ HALT
 
     ```
     python rrm9598_avm6288_timingsimulator.py --iodir test_cases/test_0
+    ```
+
+3. To generate the Timing Diagram CSV file, use the following code. However, note that, for large programs like fully connected layer and convolution layer, the CSV file size is very large (in GB), and the code execution takes much longer.
+
+    ```
+    python rrm9598_avm6288_timingsimulator.py --iodir test_cases/test_0 --timing Y
     ```

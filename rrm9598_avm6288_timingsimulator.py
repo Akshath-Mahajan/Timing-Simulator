@@ -751,6 +751,7 @@ if __name__ == "__main__":
     #parse arguments for input file location
     parser = argparse.ArgumentParser(description='Vector Core Functional Simulator')
     parser.add_argument('--iodir', default="", type=str, help='Path to the folder containing the input files - instructions and data.')
+    parser.add_argument('--timing', default="N", type=str, help='Generate Timing Diagram CSV, Input: [Y/N]')
     args = parser.parse_args()
 
     iodir = os.path.abspath(args.iodir)
@@ -774,7 +775,9 @@ if __name__ == "__main__":
     # vcore.dumpregs(iodir)
     
     vcore.dumpResult(iodir)
-    vcore.dumpTimingDiagram(iodir)
+    
+    if args.timing == "Y":
+        vcore.dumpTimingDiagram(iodir)
 
     # sdmem.dump()
     # vdmem.dump()
