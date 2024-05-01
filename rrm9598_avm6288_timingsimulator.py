@@ -567,11 +567,12 @@ class Core():
                     fu.addInstr(instr)
                     operands = instr["operand_with_type"]
                     for (operand, _type) in operands:
-                        if _type == "scalar":
-                            bb = self.SRFBB
-                        else:
-                            bb = self.VRFBB
-                        bb.setBusy(operand)
+                        if operand != None:
+                            if _type == "scalar":
+                                bb = self.SRFBB
+                            else:
+                                bb = self.VRFBB
+                            bb.setBusy(operand)
                 else:
                     q.unpop(instr)
                     # print("Stalling the instruction - {} is busy".format(instr["functionalUnit"]))    # fu.setBusy()
