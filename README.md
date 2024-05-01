@@ -1,5 +1,10 @@
 # Vector Processor - Timing Simulator
 
+__Authors:__
+
+- Akshath Mahajan (avm6288)
+- Rugved Mhatre (rrm9598)
+
 ## VMIPS ISA Specifications
 
 - Vector Length - 64
