@@ -357,13 +357,17 @@ class Core():
         banks = [0 for _ in range(n_banks)]
         # print("Banks:", n_banks, "Lanes:", n_lanes)
         addrs = []
-        for i in range((len(addresses) // n_lanes) + 1):
-            start_idx = i*n_lanes
-            end_idx   = (i+1)*n_lanes
+        if type(addresses) is not int:
+            for i in range((len(addresses) // n_lanes) + 1):
+                start_idx = i*n_lanes
+                end_idx   = (i+1)*n_lanes
 
-            addrs.append(
-                addresses[start_idx:end_idx]
-            )
+                addrs.append(
+                    addresses[start_idx:end_idx]
+                )
+        else:
+            # For the case when there is only one load address or one store address, i.e. VLR of 1
+            addrs.append([addresses])
         # print("Addrs:", addrs)
         # addrs = [[addresses to issue at cycle 1], [addresses to issue at cycle 2]]
 
