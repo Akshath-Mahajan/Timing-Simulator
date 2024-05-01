@@ -8,6 +8,8 @@ import argparse
 
 import csv
 
+OPTIMIZE_READ_PORTS = False
+
 class TimingDiagramExporter:
     def __init__(self, timing_diagram, instrs):
         self.timing_diagram = timing_diagram
@@ -554,7 +556,11 @@ class Core():
         for fu in fus:
             if fu.getStatus() == "busy":
                 busy_instr_idx = fu.instr["instr_idx"]
-                for busy_destination in fu.instr["operand_with_type"]:
+                _destinations = fu.instr["operand_with_type"]
+                if OPTIMIZE_READ_PORTS:
+                    # If there are any number of read ports, then we only need to track dependencies based on writes
+                    _destinations = _destinations[0:1]
+                for busy_destination in _destinations:
                 # busy_destination = fu.instr["operand_with_type"][0] # (op, type)
                 # print("destination", busy_destination, fu.instr)
                     for opr in operands:
@@ -565,7 +571,11 @@ class Core():
             for q_instr in q.queue:
                 # Error handling for HALT and CVM instruction, as they have no destination register
                 if len(q_instr["operand_with_type"]) != 0:
-                    for busy_destination in q_instr["operand_with_type"]:
+                    _destinations = q_instr["operand_with_type"]
+                    if OPTIMIZE_READ_PORTS:
+                        # If there are any number of read ports, then we only need to track dependencies based on writes
+                        _destinations = _destinations[0:1]
+                    for busy_destination in _destinations:
                     # busy_destination = q_instr["operand_with_type"][0] # (op, type)
                         busy_instr_idx = q_instr["instr_idx"]
 
