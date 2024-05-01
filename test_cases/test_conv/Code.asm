@@ -1,4 +1,3 @@
-CVM             # Clear Vector Mask
 LS SR1 SR0 1    # Load value 1
 LS SR2 SR0 2    # Load value 2
 LS SR3 SR0 3    # Load value 0 (vector base address, do not use elsewhere)
