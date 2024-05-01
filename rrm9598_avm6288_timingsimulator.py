@@ -317,7 +317,7 @@ class Core():
 
         self.wait_instrs = {"HALT", "CVM", "MTCL"}
     
-    def get_operands(self, instruction: list):
+    def get_operands(self, instruction: list, is_load = False):
         if len(instruction) == 4:
             destination = str(instruction[1])
             operand1 = str(instruction[2])
@@ -337,7 +337,7 @@ class Core():
             if operand1.startswith('('):
                 address = eval(operand1)
                 # print(type(address))
-                if type(address) == int:
+                if type(address) == int and not is_load:
                     return [destination_reg_idx]
                 return [destination_reg_idx, address]
             else:
@@ -347,7 +347,7 @@ class Core():
             operand1 = str(instruction[1])
             if operand1.startswith('('):
                 address = eval(operand1)
-                if type(address) == int:
+                if type(address) == int and not is_load:
                     return []
                 return [address]
             else:
@@ -498,7 +498,7 @@ class Core():
             instruction_dict['cycles'] = self.config.parameters['pipelineDepthShuffle'] + (self.VLR.Read(0)[0] // self.config.parameters['numLanes']) - 1
             instruction_dict['operand_with_type'] = [[operands[0], 'vector'], [operands[1], 'vector'], [operands[2], 'vector']]
         elif instruction_word.startswith('LV') or instruction_word.startswith('SV'):
-            operands = self.get_operands(current_instruction)
+            operands = self.get_operands(current_instruction, is_load=True)
             instruction_dict['functionalUnit'] = 'VectorLS'
             instruction_dict['cycles'] = self.calculate_bank_cycles(operands[1])
             instruction_dict['operand_with_type'] = [[operands[0], 'vector']]
