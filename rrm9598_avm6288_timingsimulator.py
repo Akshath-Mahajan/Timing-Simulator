@@ -483,12 +483,14 @@ class Core():
         else:
             instruction_dict['functionalUnit'] = 'ScalarU'
             instruction_dict['cycles'] = 1
-            operands = self.get_operands(current_instruction)
             if instruction_word == 'MTCL':
+                operands = self.get_operands(current_instruction[:2])
                 instruction_dict['operand_with_type'] = [[operands[0], 'scalar']]
-                VLR_val = [eval(operands[1])]
+                VLR_val = eval(current_instruction[2])
                 self.VLR.Write(0, VLR_val)
+                # print("VLR Value: ", self.VLR.Read(0))
             else:
+                operands = self.get_operands(current_instruction)
                 if not operands:
                     operands = []
                 instruction_dict['operand_with_type'] = [[_, 'scalar'] for _ in operands]
