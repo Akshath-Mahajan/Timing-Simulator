@@ -609,6 +609,7 @@ class Core():
         ]
         for fu in FUs:
             print("{}: Instr {} Cycles {} Status {}".format(fu, fu.instr, fu.cycles, fu.getStatus()))
+    
     def run(self):
         # Printing current VMIPS configuration
         print("")
@@ -664,16 +665,18 @@ class Core():
         print(" Total Cycles: ", self.cycle)
         print("------------------------------")
         # print(self.timing_diagram, len(self.timing_diagram))
-        exporter = TimingDiagramExporter(self.timing_diagram, self.imem)
-        exporter.generate_excel("timing_diagram.csv")
-
-
-        with open('result.txt', 'w') as f:
-            f.write("Total cycles: {}".format(self.cycle))
 
     def dumpregs(self, iodir):
         for rf in self.RFs.values():
             rf.dump(iodir)
+
+    def dumpTimingDiagram(self, iodir):
+        exporter = TimingDiagramExporter(self.timing_diagram, self.imem)
+        exporter.generate_excel(os.path.join(iodir, "timing_diagram.csv"))
+
+    def dumpResult(self, iodir):
+        with open(os.path.join(iodir, 'result.txt'), 'w') as f:
+            f.write("Total cycles: {}".format(self.cycle))
 
 if __name__ == "__main__":
     #parse arguments for input file location
@@ -700,6 +703,8 @@ if __name__ == "__main__":
     # Run Core
     vcore.run()   
     # vcore.dumpregs(iodir)
+    vcore.dumpTimingDiagram(iodir)
+    vcore.dumpResult(iodir)
 
     # sdmem.dump()
     # vdmem.dump()
