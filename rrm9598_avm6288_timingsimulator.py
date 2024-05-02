@@ -418,6 +418,14 @@ class Core():
         if fu.getStatus() == "busy" and fu.instr["instructionWord"] in self.wait_instrs:
             return fu.instr, True
         return None, False
+    
+    def fu_filled_lt_instr(self, idx):
+        FUs = [self.VectorLS, self.VectorADD, self.VectorDIV, self.VectorMUL, self.VectorSHUF]
+        for fu in FUs:
+            if fu.getStatus() == "busy" and fu.instr["instr_idx"] < idx:
+                return True
+            
+        return False
     def execute(self):
         # instr has FU
         FUs = [self.ScalarU, self.VectorLS, self.VectorADD, self.VectorDIV, self.VectorMUL, self.VectorSHUF]
@@ -428,12 +436,14 @@ class Core():
                     fu.clearStatus()
                     c = False
                     # print(self.fu_filled(), self.q_instrs_before(fu.instr["instr_idx"]))
-                    if self.fu_filled():
+                    if self.fu_filled_lt_instr(fu.instr["instr_idx"]):
                         # If FU is filled or there are instrs that need to be executed before instr in the queue
                         c = True
                     fu.setBusy()
-                    self.timing_diagram[fu.instr["instr_idx"]].append(("D", self.cycle))
+                    # if self.cycle == 220:
+
                     if c:
+                        self.timing_diagram[fu.instr["instr_idx"]].append(("D", self.cycle))
                         continue
 
             if fu.getStatus() == "busy":
@@ -754,7 +764,7 @@ class Core():
 
     def dumpTimingDiagram(self, iodir):
         exporter = TimingDiagramExporter(self.timing_diagram, self.imem)
-        exporter.generate_excel(os.path.join(iodir, "timing_diagram.csv"))
+        exporter.generate_excel(os.path.join(iodir, "timing_diagram_{}.csv".format(config.parameters["computeQueueDepth"])))
 
     def dumpResult(self, iodir):
         with open(os.path.join(iodir, 'result.txt'), 'w') as f:
