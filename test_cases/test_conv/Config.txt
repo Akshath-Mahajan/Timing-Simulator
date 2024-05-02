@@ -1,6 +1,6 @@
 # Dispatch Queue parameters
 dataQueueDepth = 4
-computeQueueDepth = 16
+computeQueueDepth = 4
 
 # VDMEM LS parameters
 vdmNumBanks = 16
